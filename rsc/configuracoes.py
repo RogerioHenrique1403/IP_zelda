@@ -15,4 +15,3 @@ class Configuracao:
     @property
     def fps(self):
         return self._fps
-        
