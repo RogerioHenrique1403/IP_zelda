@@ -6,6 +6,7 @@ from interface import Interface
 from inimigos import Inimigo
 from mapa import Mapa
 from coletaveis import Npc
+from coletaveis import Coletavel
 
 
 class Jogo:
@@ -33,6 +34,7 @@ class Jogo:
         # --- POSIÇÕES INICIAIS ---
         self.pos_npc_x, self.pos_npc_y = 600, 400
         self.pos_jogador_x, self.pos_jogador_y = 400, 300
+        self.pos_colet_x, self.pos_colet_y = 0, 0
 
         # Máquina de Estados
         self.estado_atual = 'MENU'
@@ -57,6 +59,7 @@ class Jogo:
         self.npc = Npc(self.pos_npc_x, self.pos_npc_y)
         self.venceu_fase = False
         self.mostrando_dialogo = False
+        self.coletavel = Coletavel(self.pos_colet_x, self.pos_colet_y, 'coletavel', 'SwordIcon.png')
 
     def tratar_transicao_de_tela(self):
         """ 
@@ -108,6 +111,16 @@ class Jogo:
                 self.jogador.hitbox.centery = int(self.jogador.y)
                 
                 self.carregar_mapa_atual()
+
+                if self.mapa_x == -1 and self.mapa_y == 0:
+                    self.coletavel.rect.center = (300,300)
+
+                elif self.mapa_x == 0 and self.mapa_y == 1:
+                    self.coletavel.rect.center = (600, 600)
+                
+                elif self.mapa_x == 1 and self.mapa_y == 0:
+                    self.coletavel.rect.center = (900, 300)   
+
                 print(f"Mudando para Mapa: ({self.mapa_x}, {self.mapa_y})")
             else:
                 # BLOQUEIO DE BORDA: Se não houver mapa, impede a passagem (parede sólida)
@@ -129,6 +142,25 @@ class Jogo:
         if self.mapa_x == 0 and self.mapa_y == 0:
             area_interacao = self.npc.hitbox.inflate(50, 50)
             return self.jogador.hitbox.colliderect(area_interacao)
+        return False
+
+    def interacao_coletavel(self):
+        """ Cria os coletáveis nos mapas esquerdo, baixo e direito """
+
+        # Esquerda
+        if self.mapa_x == -1 and self.mapa_y == 0:
+            area_coletavel = self.coletavel.hitbox
+            return self.jogador.hitbox.colliderect(area_coletavel)
+    
+        # Baixo
+        if self.mapa_x == 0 and self.mapa_y == 1:
+            area_coletavel = self.coletavel.hitbox
+            return self.jogador.hitbox.colliderect(area_coletavel)
+    
+        # Direita
+        if self.mapa_x == 1 and self.mapa_y == 0:
+            area_coletavel = self.coletavel.hitbox
+            return self.jogador.hitbox.colliderect(area_coletavel)
         return False
 
     def run(self):
@@ -183,6 +215,25 @@ class Jogo:
                 # 3. INTERAÇÃO (ENTER)
                 self.interacao_npc()
 
+                # 4. ITERAÇÃO COM OS COLETÁVEIS
+
+                # Esquerdo
+                if self.mapa_x == -1 and self.mapa_y == 0:
+                    if self.jogador.hitbox.colliderect(self.coletavel.hitbox):
+                        self.jogador.x, self.jogador.y = pos_anterior_x, pos_anterior_y
+                        self.jogador.hitbox.centerx, self.jogador.hitbox.centery = int(self.jogador.x), int(self.jogador.y)
+                 # Baixo
+                if self.mapa_x == 0 and self.mapa_y == 1:
+                    if self.jogador.hitbox.colliderect(self.coletavel.hitbox):
+                        self.jogador.x, self.jogador.y = pos_anterior_x, pos_anterior_y
+                        self.jogador.hitbox.centerx, self.jogador.hitbox.centery = int(self.jogador.x), int(self.jogador.y)
+
+                 # Direito
+                if self.mapa_x == 1 and self.mapa_y == 0:
+                    if self.jogador.hitbox.colliderect(self.coletavel.hitbox):
+                        self.jogador.x, self.jogador.y = pos_anterior_x, pos_anterior_y
+                        self.jogador.hitbox.centerx, self.jogador.hitbox.centery = int(self.jogador.x), int(self.jogador.y)
+
                 # DESENHO
                 self.tela.fill(self.COR_GRAMA)
                 if self.mapa:
@@ -192,6 +243,15 @@ class Jogo:
                 sprites_para_desenhar = [self.jogador]
                 if self.mapa_x == 0 and self.mapa_y == 0:
                     sprites_para_desenhar.append(self.npc)
+
+                if self.mapa_x == -1 and self.mapa_y == 0:
+                    sprites_para_desenhar.append(self.coletavel)
+
+                if self.mapa_x == 0 and self.mapa_y == 1:
+                    sprites_para_desenhar.append(self.coletavel)
+
+                if self.mapa_x == 1 and self.mapa_y == 0:
+                    sprites_para_desenhar.append(self.coletavel)
                 
                 sprites_para_desenhar.sort(key=lambda sprite: sprite.hitbox.centery)
 
