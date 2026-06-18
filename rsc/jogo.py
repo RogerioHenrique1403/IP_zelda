@@ -9,7 +9,7 @@ from coletaveis import Npc
 from coletaveis import Coletavel
 
 
-class Jogo:
+class Jogo: 
     def __init__(self, tela, interface):
         self.tela = tela
         self.interface = interface
@@ -24,11 +24,26 @@ class Jogo:
 
         # Dicionário de mapas cadastrados (Tupla (x,y): Caminho do arquivo .tmx)
         self.gerenciador_mapas = {
-            (0, 0): "../res/Layout_Examples/Mapa_teste.tmx", # Centro
-            (1, 0): "../res/Layout_Examples/Mapa_teste.tmx", # Direita
-            (-1, 0): "../res/Layout_Examples/Mapa_teste.tmx", # Esquerda
-            (0, 1): "../res/Layout_Examples/Mapa_teste.tmx", # Baixo
-            (0, -1): "../res/Layout_Examples/Mapa_teste.tmx" # Cima
+            (0, 0): "../res/Layout_Examples/fundo_central_bloqueado.png",  # Centro (bloqueado no começo)
+            (1, 0): "../res/Layout_Examples/fundo_loop.png",               # Direita
+            (-1, 0): "../res/Layout_Examples/fundo_memory_leak.png",            # Esquerda
+            (0, 1): "../res/Layout_Examples/fundo_trojan.png",       # Baixo
+            (0, -1): "../res/Layout_Examples/fundo_python.png"             # Cima
+        }
+
+        # Mapas especiais para o centro desbloqueado e topo liberado depois disso
+        self.caminho_mapa_central_bloqueado = "../res/Layout_Examples/fundo_central_bloqueado.png"
+        self.caminho_mapa_central_desbloqueado = "../res/Layout_Examples/fundo_central_desbloqueado.png"
+        self.mapa_central_desbloqueado = False
+
+        # Controle do progresso dos 3 inimigos principais
+        self.inimigos_derrotados = 0
+        self.inimigos_necessarios = 3
+        self.inimigos = []
+        self.inimigos_por_mapa = {
+            (-1, 0): {'tipo': 'slime', 'x': 180, 'y': 250},
+            (1, 0): {'tipo': 'morcego', 'x': 900, 'y': 250},
+            (0, 1): {'tipo': 'slime', 'x': 400, 'y': 420}
         }
 
         # --- POSIÇÕES INICIAIS ---
@@ -48,17 +63,47 @@ class Jogo:
 
     def carregar_mapa_atual(self):
         """ Carrega o arquivo TMX baseado nas coordenadas atuais do mundo """
-        caminho_tmx = self.gerenciador_mapas.get((self.mapa_x, self.mapa_y))
+        caminho_tmx = self.obter_caminho_mapa_atual()
         if caminho_tmx:
             self.mapa = Mapa(caminho_tmx)
+            self.redefinir_inimigos_do_mapa()
         else:
             print(f"ERRO: Mapa na posição ({self.mapa_x}, {self.mapa_y}) não encontrado!")
+
+    def obter_caminho_mapa_atual(self):
+        """Escolhe o mapa correto do centro de acordo com o progresso do jogador."""
+        if (self.mapa_x, self.mapa_y) == (0, 0) and self.mapa_central_desbloqueado:
+            return self.caminho_mapa_central_desbloqueado
+        return self.gerenciador_mapas.get((self.mapa_x, self.mapa_y))
+
+    def pode_acessar_mapa(self, x, y):
+        """Impede o topo de ser liberado antes do centro desbloquear."""
+        if (x, y) == (0, -1):
+            return self.mapa_central_desbloqueado
+        return (x, y) in self.gerenciador_mapas
+
+    def redefinir_inimigos_do_mapa(self):
+        """Cria os inimigos apenas nos mapas que precisam deles."""
+        self.inimigos = []
+        posicao = (self.mapa_x, self.mapa_y)
+        if posicao in self.inimigos_por_mapa:
+            dados = self.inimigos_por_mapa[posicao]
+            self.inimigos.append(
+                Inimigo(
+                    dados['x'],
+                    dados['y'],
+                    self.interface,
+                    tipo=dados['tipo']
+                )
+            )
 
     def inicializar_elementos_jogo(self):
         self.jogador = Jogador(self.pos_jogador_x, self.pos_jogador_y, self.interface)
         self.npc = Npc(self.pos_npc_x, self.pos_npc_y)
         self.venceu_fase = False
         self.mostrando_dialogo = False
+        self.inimigos_derrotados = 0
+        self.mapa_central_desbloqueado = False
         self.coletavel = Coletavel(self.pos_colet_x, self.pos_colet_y, 'coletavel', 'SwordIcon.png')
 
     def tratar_transicao_de_tela(self):
@@ -101,8 +146,8 @@ class Jogo:
             mudou_mapa = True
 
         if mudou_mapa:
-            # Verifica se existe um mapa cadastrado nas novas coordenadas
-            if (novo_mapa_x, novo_mapa_y) in self.gerenciador_mapas:
+            # Verifica se o novo mapa pode ser acessado
+            if self.pode_acessar_mapa(novo_mapa_x, novo_mapa_y):
                 self.mapa_x, self.mapa_y = novo_mapa_x, novo_mapa_y
                 self.jogador.x, self.jogador.y = nova_pos_x, nova_pos_y
                 
@@ -119,7 +164,7 @@ class Jogo:
                     self.coletavel.rect.center = (600, 600)
                 
                 elif self.mapa_x == 1 and self.mapa_y == 0:
-                    self.coletavel.rect.center = (900, 300)   
+                    self.coletavel.rect.center = (900, 300)
 
                 print(f"Mudando para Mapa: ({self.mapa_x}, {self.mapa_y})")
             else:
@@ -163,6 +208,25 @@ class Jogo:
             return self.jogador.hitbox.colliderect(area_coletavel)
         return False
 
+    def atualizar_combate(self):
+        """Atualiza inimigos e verifica se o jogador derrotou os três chefes."""
+        for inimigo in self.inimigos[:]:
+            if inimigo.vida <= 0:
+                self.inimigos.remove(inimigo)
+                self.inimigos_derrotados += 1
+                if self.inimigos_derrotados >= self.inimigos_necessarios:
+                    self.mapa_central_desbloqueado = True
+                continue
+
+            inimigo.update(self.jogador)
+
+        if self.jogador.atacando:
+            area_ataque = self.jogador.criar_hitbox_ataque()
+            for inimigo in self.inimigos:
+                if area_ataque.colliderect(inimigo.hitbox):
+                    inimigo.receber_dano(25)
+                    break
+
     def run(self):
         rodando = True
         while rodando:
@@ -203,6 +267,7 @@ class Jogo:
                 # Só move se não estiver em diálogo
                 if not self.mostrando_dialogo:
                     self.jogador.update()
+                    self.atualizar_combate()
                     # 1. TRATAR TRANSIÇÃO DE TELA
                     self.tratar_transicao_de_tela()
 
@@ -252,6 +317,8 @@ class Jogo:
 
                 if self.mapa_x == 1 and self.mapa_y == 0:
                     sprites_para_desenhar.append(self.coletavel)
+
+                sprites_para_desenhar.extend(self.inimigos)
                 
                 sprites_para_desenhar.sort(key=lambda sprite: sprite.hitbox.centery)
 
@@ -265,10 +332,9 @@ class Jogo:
                     self.interface.desenhar_caixa_dialogo(
                         self.tela, 
                         "Rogerin", 
-                        f'''Olá Rogerin,me chamo PHP véi, você foi sugado para o universo tecnologico que existe
-                        nos computadores do GRAD 5 e preciso da sua ajuda para derrotar o python para eu poder recuperar meus poderes
-                         mas, pra isso você precisa enfrentar cada um dos bosses que estão em cada uma das direções. Na esquerda está o trojan, na direita
-                          está o loop infinito e em baixo está o memory leak e cada um vai lhe dar um item para derrotar o python que está acima de nós. Conto com sua ajuda '''
+                        f'''Olá Rogerin, me chamo PHP véi, você foi sugado para o universo tecnológico dentro dos computadores do GRAD 5. Preciso da sua ajuda para derrotar o python e recuperar meus poderes como linguagem mais popular.
+                         Mas, para isso, você precisa enfrentar cada um dos inimigos que estão ao nosso redor: à esquerda está o trojan, à direita
+                          está o loop infinito e em baixo está o memory leak. Cada um vai lhe dar um item para derrotar o python que está atualmente acima de nós. Conto com sua ajuda! '''
                     )
 
             pygame.display.update()

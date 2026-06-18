@@ -8,7 +8,7 @@ class Coletavel(pygame.sprite.Sprite):
         
         diretorio_rsc = os.path.dirname(os.path.abspath(__file__))
         diretorio_raiz = os.path.dirname(diretorio_rsc)
-        caminho_imagem = os.path.join(diretorio_raiz, 'res', 'Interactable_Tiles','PNG', 'tileFancyPot.png')
+        caminho_imagem = os.path.join(diretorio_raiz, 'res', 'Coletaveis', 'drop_memory_leak.png')
         
         
         imagem_original = pygame.image.load(caminho_imagem).convert_alpha()
