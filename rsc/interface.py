@@ -1,0 +1,206 @@
+import pygame
+import os
+from configuracoes import Configuracao
+
+
+class Interface:
+    def __init__(self):
+        self.config = Configuracao()
+        self.tela = pygame.display.set_mode(
+            (self.config.largura, self.config.altura))
+        pygame.display.set_caption("Zelda Clone")
+
+        # Inicializa as fontes do PyGame
+        pygame.font.init()
+        self.fonte_placar = pygame.font.SysFont('Arial', 24, bold=True)
+        self.fonte_titulo = pygame.font.SysFont('Arial', 60, bold=True)
+        self.fonte_botoes = pygame.font.SysFont('Arial', 32, bold=True)
+
+        self.carregar_imagens_vida()
+
+    def criar_tela(self):
+        pygame.display.set_caption("Pixel Quest RPG")
+        return pygame.display.set_mode((self.largura_tela, self.altura_tela))
+
+    def carregar_imagens_vida(self):
+        self.imagens_vida = {}
+        valores_vida = [20, 40, 60, 80, 100]
+        diretorio_script = os.path.dirname(os.path.abspath(__file__))
+
+        caminhos_possiveis = [
+            os.path.join(diretorio_script, '..', 'res', 'ui'),
+            os.path.join(diretorio_script, 'res', 'ui'),
+            os.path.join('res', 'ui')
+        ]
+
+        caminho_final = None
+        for caminho in caminhos_possiveis:
+            if os.path.exists(caminho):
+                caminho_final = caminho
+                print(f"--- SUCESSO: Pasta de imagens encontrada em: {caminho}")
+                break
+
+        if caminho_final:
+            for val in valores_vida:
+                nome_arquivo = f'vida_{val}.png'
+                caminho_img = os.path.join(caminho_final, nome_arquivo)
+                try:
+                    img = pygame.image.load(caminho_img).convert_alpha()
+                    escala = 0.8
+                    img = pygame.transform.scale(
+                        img, (img.get_width() * escala, img.get_height() * escala))
+                    self.imagens_vida[val] = img
+                except Exception as e:
+                    print(f"ERRO ao carregar {nome_arquivo}: {e}")
+        else:
+            print("--- ERRO FATAL: Não encontrei a pasta 'res/ui' em lugar nenhum!")
+
+    def desenhar_hud_jogo(self, tela, vida_atual, inventario_jogador):
+        """ Desenha a vida e o placar de coletáveis durante a gameplay """
+        # 1. BARRA DE VIDA
+        if vida_atual > 80:
+            chave = 100
+        elif vida_atual > 60:
+            chave = 80
+        elif vida_atual > 40:
+            chave = 60
+        elif vida_atual > 20:
+            chave = 40
+        else:
+            chave = 20
+
+        pos_x, pos_y = 10, 10
+        if chave in self.imagens_vida:
+            tela.blit(self.imagens_vida[chave], (pos_x, pos_y))
+        else:
+            pygame.draw.rect(tela, (255, 0, 0), (pos_x, pos_y, 100, 30))
+
+    def desenhar_caixa_dialogo(self, tela, nome, mensagem):
+        """ Desenha uma caixa de diálogo que ajusta o tamanho conforme o texto """
+        largura_caixa = self.config.largura - 100
+        largura_maxima_texto = largura_caixa - 40 # Margem interna
+        espacamento_y = 30
+        
+        # 1. Lógica de Quebra de Linha (Word Wrap) antecipada para calcular altura
+        palavras = mensagem.replace('\n', ' ').split(' ')
+        linhas = []
+        linha_atual = ""
+
+        for palavra in palavras:
+            if not palavra: continue
+            test_line = linha_atual + palavra + " "
+            if self.fonte_placar.size(test_line)[0] < largura_maxima_texto:
+                linha_atual = test_line
+            else:
+                linhas.append(linha_atual)
+                linha_atual = palavra + " "
+        linhas.append(linha_atual)
+
+        # 2. Calcular Altura Dinâmica
+        # (Topo + Nome + Linhas de Texto + Rodapé + Margem)
+        altura_caixa = 60 + (len(linhas) * espacamento_y) + 40
+        x = 50
+        y = self.config.altura - altura_caixa - 30
+
+        # 3. Desenhar Fundo da caixa
+        rect_caixa = pygame.Rect(x, y, largura_caixa, altura_caixa)
+        pygame.draw.rect(tela, (0, 0, 0), rect_caixa)
+        pygame.draw.rect(tela, (255, 255, 255), rect_caixa, 3) 
+
+        # 4. Desenhar Nome do Personagem
+        surf_nome = self.fonte_placar.render(f"[{nome}]", True, (255, 215, 0))
+        tela.blit(surf_nome, (x + 20, y + 15))
+
+        # 5. Desenhar cada linha de texto
+        pos_y_texto = y + 55
+        for linha in linhas:
+            surf_msg = self.fonte_placar.render(linha.strip(), True, (255, 255, 255))
+            tela.blit(surf_msg, (x + 20, pos_y_texto))
+            pos_y_texto += espacamento_y
+
+        # 6. Instrução de rodapé
+        surf_inst = self.fonte_placar.render("ENTER para fechar", True, (150, 150, 150))
+        tela.blit(surf_inst, (x + largura_caixa - 220, y + altura_caixa - 35))
+
+
+    def desenhar_menu(self, tela):
+        """ Desenha a tela inicial de Menu e retorna True se clicar em Começar """
+        tela.fill((20, 40, 20)) # Fundo verde escuro
+
+        # Título do Jogo
+        titulo = self.fonte_titulo.render("IP: The Legend Rogerin", True, (255, 215, 0))
+        rect_titulo = titulo.get_rect(center=(self.config.largura // 2, 200))
+        tela.blit(titulo, rect_titulo)
+
+        # Botão Começar
+        largura_btn, altura_btn = 250, 60
+        x_btn = (self.config.largura // 2) - (largura_btn // 2)
+        y_btn = 400
+        rect_botao = pygame.Rect(x_btn, y_btn, largura_btn, altura_btn)
+
+        # Detecta clique e hover do mouse
+        pos_mouse = pygame.mouse.get_pos()
+        clique_mouse = pygame.mouse.get_pressed()
+
+        cor_botao = (34, 139, 34) # Verde normal
+        if rect_botao.collidepoint(pos_mouse):
+            cor_botao = (50, 205, 50) # Verde brilhante no Hover
+            if clique_mouse[0] == 1: # Clique com botão esquerdo
+                return "JOGANDO"
+
+        pygame.draw.rect(tela, cor_botao, rect_botao, border_radius=10)
+        pygame.draw.rect(tela, (255, 255, 255), rect_botao, 2, border_radius=10) # Borda branca
+
+        texto_btn = self.fonte_botoes.render("COMEÇAR", True, (255, 255, 255))
+        rect_texto_btn = texto_btn.get_rect(center=rect_botao.center)
+        tela.blit(texto_btn, rect_texto_btn)
+
+        return "MENU"
+
+    def desenhar_fim_de_jogo(self, tela, venceu=False):
+        """ Desenha a tela de Vitória ou Derrota e gerencia os cliques nos botões """
+        tela.fill((10, 10, 10)) # Fundo preto de fim de jogo
+
+        # Texto Principal (Vitória ou Derrota)
+        if venceu:
+            texto_principal = self.fonte_titulo.render("VOCÊ ABRIU O BAÚ E VENCEU!", True, (255, 215, 0))
+        else:
+            texto_principal = self.fonte_titulo.render("GAME OVER", True, (255, 0, 0))
+            
+        rect_principal = texto_principal.get_rect(center=(self.config.largura // 2, 200))
+        tela.blit(texto_principal, rect_principal)
+
+        # Configurações dos botões "Jogar de Novo" e "Voltar ao Menu"
+        largura_btn, altura_btn = 280, 60
+        pos_mouse = pygame.mouse.get_pos()
+        clique_mouse = pygame.mouse.get_pressed()
+
+        # Botão 1: Jogar de Novo
+        rect_btn_novo = pygame.Rect((self.config.largura // 2) - (largura_btn // 2), 380, largura_btn, altura_btn)
+        cor_btn_novo = (40, 40, 40)
+        if rect_btn_novo.collidepoint(pos_mouse):
+            cor_btn_novo = (70, 70, 70)
+            if clique_mouse[0] == 1:
+                return "REINICIAR"
+
+        # Botão 2: Voltar ao Menu
+        rect_btn_menu = pygame.Rect((self.config.largura // 2) - (largura_btn // 2), 470, largura_btn, altura_btn)
+        cor_btn_menu = (40, 40, 40)
+        if rect_btn_menu.collidepoint(pos_mouse):
+            cor_btn_menu = (70, 70, 70)
+            if clique_mouse[0] == 1:
+                return "VOLTAR_MENU"
+
+        # Desenhar Botão Jogar de Novo
+        pygame.draw.rect(tela, cor_btn_novo, rect_btn_novo, border_radius=10)
+        pygame.draw.rect(tela, (255, 255, 255), rect_btn_novo, 1, border_radius=10)
+        txt_novo = self.fonte_botoes.render("JOGAR DE NOVO", True, (255, 255, 255))
+        tela.blit(txt_novo, txt_novo.get_rect(center=rect_btn_novo.center))
+
+        # Desenhar Botão Voltar ao Menu
+        pygame.draw.rect(tela, cor_btn_menu, rect_btn_menu, border_radius=10)
+        pygame.draw.rect(tela, (255, 255, 255), rect_btn_menu, 1, border_radius=10)
+        txt_menu = self.fonte_botoes.render("VOLTAR AO MENU", True, (255, 255, 255))
+        tela.blit(txt_menu, txt_menu.get_rect(center=rect_btn_menu.center))
+
+        return "FIM_DE_JOGO"
