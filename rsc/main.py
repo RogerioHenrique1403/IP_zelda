@@ -7,7 +7,7 @@ from interface import Interface
 def main():
     pygame.init()
 
-    # 1. Ao criar a Interface, ela já cria a tela e carrega as imagens sozinhas
+    # 1. Ao criar a Interfaceda, ela já cria a tela e carrega as imagens sozinhas
     interface = Interface()
 
     # 2. Pegamos a tela que a interface criou para passar pro Jogo

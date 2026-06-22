@@ -39,7 +39,7 @@ class Jogo:
         #posições iniciais
         self.pos_npc_x, self.pos_npc_y = 600, 400
         self.pos_jogador_x, self.pos_jogador_y = 400, 300
-        self.pos_colet_x, self.pos_colet_y = 0, 0
+        self.pos_colet_x, self.pos_colet_y = -1000, -1000
 
         # Máquina de Estados
         self.estado_atual = 'MENU'
@@ -48,6 +48,13 @@ class Jogo:
 
         # Inicializa o mapa atual
         self.mapa = None
+        self.inimigos_necessarios = 3
+        self.inimigos_por_mapa = {
+            (-1, 0): {'x': 200, 'y': 300, 'tipo': 'memory_leak'},
+            (1, 0): {'x': 800, 'y': 300, 'tipo': 'loop_infinito'},
+            (0, 1): {'x': 500, 'y': 500, 'tipo': 'trojan'}
+        }
+
         self.carregar_mapa_atual()
         self.inicializar_elementos_jogo()
 
@@ -95,6 +102,10 @@ class Jogo:
         self.inimigos_derrotados = 0
         self.mapa_central_desbloqueado = False
         self.coletavel = Coletavel(self.pos_colet_x, self.pos_colet_y, 'coletavel', 'SwordIcon.png')
+
+        self.coletaveis_coletados = {(-1, 0): "escondido",
+                                    (1, 0): "escondido",
+                                    (0, 1): "escondido"}
 
     def tratar_transicao_de_tela(self):
         """ 
@@ -156,6 +167,8 @@ class Jogo:
                 elif self.mapa_x == 1 and self.mapa_y == 0:
                     self.coletavel.rect.center = (900, 300)
 
+                self.coletavel.hitbox.center = self.coletavel.rect.center
+
                 print(f"Mudando para Mapa: ({self.mapa_x}, {self.mapa_y})")
             else:
                 # BLOQUEIO DE BORDA: Se não houver mapa, impede a passagem (parede sólida)
@@ -204,6 +217,12 @@ class Jogo:
             if inimigo.vida <= 0:
                 self.inimigos.remove(inimigo)
                 self.inimigos_derrotados += 1
+
+                # Faz o coletável aparecer apenas qaundo o inimigo morre
+                posicao_atual = (self.mapa_x, self.mapa_y)
+                if posicao_atual in self.coletaveis_coletados:
+                    self.coletaveis_coletados[posicao_atual] = "no_chao"
+
                 if self.inimigos_derrotados >= self.inimigos_necessarios:
                     self.mapa_central_desbloqueado = True
                 continue
@@ -271,23 +290,10 @@ class Jogo:
                 self.interacao_npc()
 
                 # 4. ITERAÇÃO COM OS COLETÁVEIS
-
-                # Esquerdo
-                if self.mapa_x == -1 and self.mapa_y == 0:
+                posicao_atual = (self.mapa_x, self.mapa_y)
+                if self.coletaveis_coletados.get(posicao_atual) == "no_chao":
                     if self.jogador.hitbox.colliderect(self.coletavel.hitbox):
-                        self.jogador.x, self.jogador.y = pos_anterior_x, pos_anterior_y
-                        self.jogador.hitbox.centerx, self.jogador.hitbox.centery = int(self.jogador.x), int(self.jogador.y)
-                 # Baixo
-                if self.mapa_x == 0 and self.mapa_y == 1:
-                    if self.jogador.hitbox.colliderect(self.coletavel.hitbox):
-                        self.jogador.x, self.jogador.y = pos_anterior_x, pos_anterior_y
-                        self.jogador.hitbox.centerx, self.jogador.hitbox.centery = int(self.jogador.x), int(self.jogador.y)
-
-                 # Direito
-                if self.mapa_x == 1 and self.mapa_y == 0:
-                    if self.jogador.hitbox.colliderect(self.coletavel.hitbox):
-                        self.jogador.x, self.jogador.y = pos_anterior_x, pos_anterior_y
-                        self.jogador.hitbox.centerx, self.jogador.hitbox.centery = int(self.jogador.x), int(self.jogador.y)
+                        self.coletaveis_coletados[posicao_atual] = "coletado"
 
                 # DESENHO
                 self.tela.fill(self.COR_GRAMA)
@@ -299,13 +305,7 @@ class Jogo:
                 if self.mapa_x == 0 and self.mapa_y == 0:
                     sprites_para_desenhar.append(self.npc)
 
-                if self.mapa_x == -1 and self.mapa_y == 0:
-                    sprites_para_desenhar.append(self.coletavel)
-
-                if self.mapa_x == 0 and self.mapa_y == 1:
-                    sprites_para_desenhar.append(self.coletavel)
-
-                if self.mapa_x == 1 and self.mapa_y == 0:
+                if self.coletaveis_coletados.get(posicao_atual) == "no_chao":
                     sprites_para_desenhar.append(self.coletavel)
 
                 sprites_para_desenhar.extend(self.inimigos)
