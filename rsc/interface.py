@@ -8,7 +8,7 @@ class Interface:
         self.config = Configuracao()
         self.tela = pygame.display.set_mode(
             (self.config.largura, self.config.altura))
-        pygame.display.set_caption("Zelda Clone")
+        pygame.display.set_caption("the python's trial")
 
         # Inicializa as fontes do PyGame
         pygame.font.init()
@@ -18,8 +18,16 @@ class Interface:
 
         self.carregar_imagens_vida()
 
+        # Carrega imagem de fundo do menu (fundo_menu) se existir
+        self.fundo_menu = None
+        self.carregar_fundo_menu()
+
+        # Carrega sprites do inventário
+        self.inventario_imgs = {}
+        self.carregar_inventario_sprites()
+
     def criar_tela(self):
-        pygame.display.set_caption("Pixel Quest RPG")
+        pygame.display.set_caption("the python's trial")
         return pygame.display.set_mode((self.largura_tela, self.altura_tela))
 
     def carregar_imagens_vida(self):
@@ -55,6 +63,64 @@ class Interface:
         else:
             print("--- ERRO FATAL: Não encontrei a pasta 'res/ui' em lugar nenhum!")
 
+    def carregar_fundo_menu(self):
+        diretorio_script = os.path.dirname(os.path.abspath(__file__))
+        caminhos_possiveis = [
+            os.path.join(diretorio_script, '..', 'res', 'Layout_Examples'),
+            os.path.join(diretorio_script, '..', 'res', 'ui'),
+            os.path.join(diretorio_script, 'res', 'ui'),
+            os.path.join('res', 'Layout_Examples'),
+            os.path.join('res', 'ui')
+        ]
+
+        caminho_final = None
+        for caminho in caminhos_possiveis:
+            if os.path.exists(caminho):
+                # procura por arquivos que comecem com 'fundo_menu'
+                for f in os.listdir(caminho):
+                    if f.lower().startswith('fundo_menu') and f.lower().endswith(('.png', '.jpg', '.jpeg')):
+                        caminho_final = os.path.join(caminho, f)
+                        break
+            if caminho_final:
+                break
+
+        if caminho_final and os.path.exists(caminho_final):
+            try:
+                self.fundo_menu = pygame.image.load(caminho_final).convert()
+            except Exception as e:
+                print(f"ERRO ao carregar fundo_menu: {e}")
+        else:
+            self.fundo_menu = None
+
+    def carregar_inventario_sprites(self):
+        diretorio_script = os.path.dirname(os.path.abspath(__file__))
+        caminhos_possiveis = [
+            os.path.join(diretorio_script, '..', 'res', 'sprites inventario'),
+            os.path.join(diretorio_script, '..', 'res', 'sprites_inventario'),
+            os.path.join(diretorio_script, 'res', 'sprites inventario'),
+            os.path.join('res', 'sprites inventario')
+        ]
+
+        pasta_final = None
+        for caminho in caminhos_possiveis:
+            if os.path.exists(caminho):
+                pasta_final = caminho
+                break
+
+        if pasta_final:
+            try:
+                for f in os.listdir(pasta_final):
+                    if f.lower().endswith(('.png', '.jpg', '.jpeg')) and f.lower().startswith('inventario'):
+                        try:
+                            img = pygame.image.load(os.path.join(pasta_final, f)).convert_alpha()
+                            self.inventario_imgs[f] = img
+                        except Exception as e:
+                            print(f"ERRO ao carregar inventário {f}: {e}")
+            except Exception as e:
+                print(f"ERRO acessando pasta de inventário: {e}")
+        else:
+            print("--- Aviso: pasta de sprites de inventario não encontrada. Usarei placeholders.")
+
     def desenhar_hud_jogo(self, tela, vida_atual, inventario_jogador):
         """ Desenha a vida e o placar de coletáveis durante a gameplay """
         # 1. BARRA DE VIDA
@@ -74,6 +140,13 @@ class Interface:
             tela.blit(self.imagens_vida[chave], (pos_x, pos_y))
         else:
             pygame.draw.rect(tela, (255, 0, 0), (pos_x, pos_y, 100, 30))
+
+        # 2. Desenha inventário no canto inferior direito
+        try:
+            self.desenhar_inventario(tela, inventario_jogador)
+        except Exception as e:
+            # Não quebrar o jogo por falha no inventário
+            print(f"ERRO desenhando inventario: {e}")
 
     def desenhar_caixa_dialogo(self, tela, nome, mensagem):
         """ Desenha uma caixa de diálogo que ajusta o tamanho conforme o texto """
@@ -125,37 +198,77 @@ class Interface:
 
     def desenhar_menu(self, tela):
         """ Desenha a tela inicial de Menu e retorna True se clicar em Começar """
-        tela.fill((20, 40, 20)) # Fundo verde escuro
+        # Desenha fundo do menu
+        if self.fundo_menu:
+            try:
+                img = pygame.transform.scale(self.fundo_menu, (self.config.largura, self.config.altura))
+                tela.blit(img, (0, 0))
+            except Exception:
+                tela.fill((20, 40, 20))
+        else:
+            tela.fill((20, 40, 20)) # Fundo verde escuro
 
-        # Título do Jogo
-        titulo = self.fonte_titulo.render("IP: The Legend Rogerin", True, (255, 215, 0))
-        rect_titulo = titulo.get_rect(center=(self.config.largura // 2, 200))
-        tela.blit(titulo, rect_titulo)
-
-        # Botão Começar
+        # Botão Começar (sem renderizar texto do título — já presente no fundo)
         largura_btn, altura_btn = 250, 60
         x_btn = (self.config.largura // 2) - (largura_btn // 2)
-        y_btn = 400
+        y_btn = int(self.config.altura * 0.75)
         rect_botao = pygame.Rect(x_btn, y_btn, largura_btn, altura_btn)
 
         # Detecta clique e hover do mouse
         pos_mouse = pygame.mouse.get_pos()
         clique_mouse = pygame.mouse.get_pressed()
 
-        cor_botao = (34, 139, 34) # Verde normal
+        cor_botao = (0, 0, 0)  # fundo preto
         if rect_botao.collidepoint(pos_mouse):
-            cor_botao = (50, 205, 50) # Verde brilhante no Hover
-            if clique_mouse[0] == 1: # Clique com botão esquerdo
+            cor_botao = (50, 50, 50)  # ligeiro destaque no hover
+            if clique_mouse[0] == 1:  # Clique com botão esquerdo
                 return "JOGANDO"
 
         pygame.draw.rect(tela, cor_botao, rect_botao, border_radius=10)
-        pygame.draw.rect(tela, (255, 255, 255), rect_botao, 2, border_radius=10) # Borda branca
+        pygame.draw.rect(tela, (255, 255, 255), rect_botao, 2, border_radius=10)  # Borda branca
 
         texto_btn = self.fonte_botoes.render("COMEÇAR", True, (255, 255, 255))
         rect_texto_btn = texto_btn.get_rect(center=rect_botao.center)
         tela.blit(texto_btn, rect_texto_btn)
 
         return "MENU"
+
+    def desenhar_inventario(self, tela, inventario_set):
+        """Desenha a sprite do inventário no canto inferior direito com base nos itens coletados.
+        inventario_set é um set() contendo strings: 'amarelo', 'roxo', 'azul'
+        """
+        # Normaliza e monta nome do arquivo esperado
+        itens = sorted(list(inventario_set)) if inventario_set else []
+        if len(itens) == 0:
+            nome = 'inventario_vazio.png'
+        elif len(itens) == 3:
+            nome = 'inventario_completo.png'
+        else:
+            nome = 'inventario_' + '_'.join(itens) + '.png'
+
+        img = None
+        # Tenta obter imagem carregada
+        if nome in self.inventario_imgs:
+            img = self.inventario_imgs[nome]
+        else:
+            # fallback: inventario_vazio
+            img = self.inventario_imgs.get('inventario_vazio.png')
+
+        if img:
+            margem = 10
+            largura = img.get_width()
+            altura = img.get_height()
+            x = self.config.largura - largura - margem
+            y = self.config.altura - altura - margem
+            tela.blit(img, (x, y))
+        else:
+            # fallback simples: caixa preta no canto
+            margem = 10
+            largura = 96
+            altura = 96
+            x = self.config.largura - largura - margem
+            y = self.config.altura - altura - margem
+            pygame.draw.rect(tela, (0, 0, 0), (x, y, largura, altura))
 
     def desenhar_fim_de_jogo(self, tela, venceu=False):
         """ Desenha a tela de Vitória ou Derrota e gerencia os cliques nos botões """

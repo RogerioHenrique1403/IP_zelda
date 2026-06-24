@@ -101,7 +101,10 @@ class Jogo:
         self.mostrando_dialogo = False
         self.inimigos_derrotados = 0
         self.mapa_central_desbloqueado = False
-        self.coletavel = Coletavel(self.pos_colet_x, self.pos_colet_y, 'coletavel', 'SwordIcon.png')
+        self.coletavel = Coletavel(self.pos_colet_x, self.pos_colet_y, 'coletavel', None)
+
+        # Inventário do jogador (set de cores: 'amarelo','roxo','azul')
+        self.inventario = set()
 
         self.coletaveis_coletados = {(-1, 0): "escondido",
                                     (1, 0): "escondido",
@@ -159,13 +162,28 @@ class Jogo:
                 self.carregar_mapa_atual()
 
                 if self.mapa_x == -1 and self.mapa_y == 0:
-                    self.coletavel.rect.center = (300,300)
+                    # Mapa da esquerda -> coletável azul
+                    self.coletavel.rect.center = (300, 300)
+                    try:
+                        self.coletavel.atualizar_imagem('coletavel_azul.png')
+                    except Exception:
+                        pass
 
                 elif self.mapa_x == 0 and self.mapa_y == 1:
+                    # Mapa de baixo -> coletável roxo
                     self.coletavel.rect.center = (600, 600)
+                    try:
+                        self.coletavel.atualizar_imagem('coletavel_roxo.png')
+                    except Exception:
+                        pass
                 
                 elif self.mapa_x == 1 and self.mapa_y == 0:
+                    # Mapa da direita -> coletável amarelo
                     self.coletavel.rect.center = (900, 300)
+                    try:
+                        self.coletavel.atualizar_imagem('coletavel_amarelo.png')
+                    except Exception:
+                        pass
 
                 self.coletavel.hitbox.center = self.coletavel.rect.center
 
@@ -236,6 +254,25 @@ class Jogo:
                     inimigo.receber_dano(25)
                     break
 
+    def adicionar_item_inventario(self, posicao):
+        """Adiciona o item correto ao inventário com base na posição do mapa.
+        Posições mapeadas:
+            (1,0) -> amarelo (direita)
+            (0,1) -> roxo (baixo)
+            (-1,0) -> azul (esquerda)
+        """
+        mapa_para_cor = {
+            (1, 0): 'amarelo',
+            (0, 1): 'roxo',
+            (-1, 0): 'azul'
+        }
+        cor = mapa_para_cor.get(posicao)
+        if not cor:
+            return
+        if cor in self.inventario:
+            return
+        self.inventario.add(cor)
+
     def run(self):
         rodando = True
         while rodando:
@@ -294,6 +331,8 @@ class Jogo:
                 if self.coletaveis_coletados.get(posicao_atual) == "no_chao":
                     if self.jogador.hitbox.colliderect(self.coletavel.hitbox):
                         self.coletaveis_coletados[posicao_atual] = "coletado"
+                        # Atualiza inventário conforme o mapa em que o item foi coletado
+                        self.adicionar_item_inventario(posicao_atual)
 
                 # DESENHO
                 self.tela.fill(self.COR_GRAMA)
@@ -315,7 +354,7 @@ class Jogo:
                 for sprite in sprites_para_desenhar:
                     self.tela.blit(sprite.image, sprite.rect)
 
-                self.interface.desenhar_hud_jogo(self.tela, self.jogador.vida, {})
+                self.interface.desenhar_hud_jogo(self.tela, self.jogador.vida, self.inventario)
 
                 # DESENHAR DIÁLOGO SE ATIVO
                 if self.mostrando_dialogo:
