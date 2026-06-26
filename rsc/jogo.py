@@ -50,8 +50,8 @@ class Jogo:
         self.mapa = None
         self.inimigos_necessarios = 3
         self.inimigos_por_mapa = {
-            (-1, 0): {'x': 200, 'y': 300, 'tipo': 'memory_leak'},
-            (1, 0): {'x': 800, 'y': 300, 'tipo': 'loop_infinito'},
+            (-1, 0): {'x': 180, 'y': 300, 'tipo': 'leak'},
+            (1, 0): {'x': 800, 'y': 300, 'tipo': 'loop'},
             (0, 1): {'x': 500, 'y': 500, 'tipo': 'trojan'}
         }
 
