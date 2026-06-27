@@ -20,6 +20,15 @@ class Jogador(Personagem):
         self.cooldown_ataque = 500  # milissegundos
         self.ultimo_ataque = 0
 
+        # Invencibilidade e Dano
+        self.invencivel = False
+        self.tempo_invencivel = 0
+        self.cooldown_invencivel = 1000 # 1 segundo
+
+        # Morte
+        self.tempo_morte = 0
+        self.morte_completa = False
+
         self.carregar_todas_imagens()
 
         # Configuração geométrica do jogador e da hitbox de colisão dos pés
@@ -130,10 +139,13 @@ class Jogador(Personagem):
             self.tempo_animacao = 0
 
     def cooldowns(self):
+        agora = pygame.time.get_ticks()
         if not self.pode_atacar:
-            agora = pygame.time.get_ticks()
             if agora - self.ultimo_ataque >= self.cooldown_ataque:
                 self.pode_atacar = True
+        if self.invencivel:
+            if agora - self.tempo_invencivel >= self.cooldown_invencivel:
+                self.invencivel = False
 
     def animar(self):
         chave = f"{self.estado}_{self.direcao}"
@@ -156,12 +168,28 @@ class Jogador(Personagem):
 
             if self.index_animacao < len(animacao_atual):
                 self.image = animacao_atual[self.index_animacao]
+                
+                # Efeito de piscar caso esteja invencível
+                if self.invencivel:
+                    agora = pygame.time.get_ticks()
+                    if (agora // 100) % 2 == 0:
+                        # Substitui temporariamente por uma superfície invisível neste frame
+                        self.image = pygame.Surface(self.image.get_size(), pygame.SRCALPHA)
+                
                 # Posiciona a imagem baseada na hitbox atualizada
                 self.rect = self.image.get_rect(center=self.hitbox.center)
                 self.rect.bottom = self.hitbox.bottom
 
     def update(self):
         self.cooldowns()
+        
+        if self.estado == 'morrendo':
+            agora = pygame.time.get_ticks()
+            if agora - self.tempo_morte >= 1500: # 1.5 segundos de animação de morte
+                self.morte_completa = True
+            self.animar_morte()
+            return
+            
         self.entrada_teclado()
         
         # Atualiza a hitbox ANTES de animar para garantir que o rect siga a posição correta
@@ -169,6 +197,50 @@ class Jogador(Personagem):
         self.hitbox.centery = int(self.y)
         
         self.animar()
+
+    def receber_dano(self, quantidade, fonte_x, fonte_y):
+        if self.invencivel or self.estado == 'morrendo':
+            return
+
+        self.vida -= quantidade
+        self.invencivel = True
+        self.tempo_invencivel = pygame.time.get_ticks()
+
+        if self.vida <= 0:
+            self.vida = 0
+            self.estado = 'morrendo'
+            self.tempo_morte = pygame.time.get_ticks()
+            self.index_animacao = 0
+        else:
+            # Knockback: empurra o jogador para longe da fonte do dano
+            dx = self.x - fonte_x
+            dy = self.y - fonte_y
+            dist = (dx**2 + dy**2)**0.5
+            if dist > 0:
+                self.x += (dx / dist) * 35
+                self.y += (dy / dist) * 35
+
+    def animar_morte(self):
+        agora = pygame.time.get_ticks()
+        pct = min(1.0, (agora - self.tempo_morte) / 1500.0)
+        
+        # Rotaciona o sprite em até 90 graus (caindo para o lado)
+        angulo = pct * 90
+        chave_base = f"parado_{self.direcao}"
+        if chave_base in self.sprites and self.sprites[chave_base]:
+            img_base = self.sprites[chave_base][0]
+        else:
+            img_base = self.image
+            
+        img_rotacionada = pygame.transform.rotate(img_base, angulo)
+        
+        # Aplica efeito de fade out (redução de opacidade)
+        alpha = int((1.0 - pct) * 255)
+        img_final = img_rotacionada.copy()
+        img_final.fill((255, 255, 255, alpha), special_flags=pygame.BLEND_RGBA_MULT)
+        
+        self.image = img_final
+        self.rect = self.image.get_rect(center=self.hitbox.center)
 
     def criar_hitbox_ataque(self):
         area_ataque = self.hitbox.copy()

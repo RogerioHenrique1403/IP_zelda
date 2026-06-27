@@ -17,7 +17,6 @@ class Jogo:
         self.FPS = 60
         self.COR_GRAMA = (34, 139, 34)
 
-        
         # Coordenadas do mundo
         self.mapa_x = 0
         self.mapa_y = 0
@@ -58,6 +57,10 @@ class Jogo:
         self.carregar_mapa_atual()
         self.inicializar_elementos_jogo()
 
+        # Controle de vitória e derrota
+        self.chefao_derrotado = False
+        self.vitoria_processada = False
+
     def carregar_mapa_atual(self):
         """ Carrega o arquivo TMX baseado nas coordenadas atuais do mundo """
         caminho_tmx = self.obter_caminho_mapa_atual()
@@ -93,6 +96,16 @@ class Jogo:
                     tipo=dados['tipo']
                 )
             )
+        elif posicao == (0, -1) and self.mapa_central_desbloqueado:
+            # Spawn the python in the top map
+            self.inimigos.append(
+                Inimigo(
+                    400,  # x position, adjust as needed
+                    300,  # y position, adjust as needed
+                    self.interface,
+                    tipo='python'
+                )
+            )
 
     def inicializar_elementos_jogo(self):
         self.jogador = Jogador(self.pos_jogador_x, self.pos_jogador_y, self.interface)
@@ -109,6 +122,9 @@ class Jogo:
         self.coletaveis_coletados = {(-1, 0): "escondido",
                                     (1, 0): "escondido",
                                     (0, 1): "escondido"}
+
+        self.chefao_derrotado = False
+        self.vitoria_processada = False
 
     def tratar_transicao_de_tela(self):
         """ 
@@ -176,7 +192,7 @@ class Jogo:
                         self.coletavel.atualizar_imagem('coletavel_roxo.png')
                     except Exception:
                         pass
-                
+
                 elif self.mapa_x == 1 and self.mapa_y == 0:
                     # Mapa da direita -> coletável amarelo
                     self.coletavel.rect.center = (900, 300)
@@ -236,7 +252,7 @@ class Jogo:
                 self.inimigos.remove(inimigo)
                 self.inimigos_derrotados += 1
 
-                # Faz o coletável aparecer apenas qaundo o inimigo morre
+                # Faz o coletável aparecer apenas quando o inimigo morre
                 posicao_atual = (self.mapa_x, self.mapa_y)
                 if posicao_atual in self.coletaveis_coletados:
                     self.coletaveis_coletados[posicao_atual] = "no_chao"
@@ -247,12 +263,15 @@ class Jogo:
 
             inimigo.update(self.jogador)
 
-        if self.jogador.atacando:
-            area_ataque = self.jogador.criar_hitbox_ataque()
-            for inimigo in self.inimigos:
-                if area_ataque.colliderect(inimigo.hitbox):
-                    inimigo.receber_dano(25)
-                    break
+            if self.jogador.atacando:
+                area_ataque = self.jogador.criar_hitbox_ataque()
+                for inimigo in self.inimigos:
+                    if area_ataque.colliderect(inimigo.hitbox):
+                        inimigo.receber_dano(25)
+                        # Check if this enemy is the python in the top map
+                        if inimigo.tipo == 'python' and (self.mapa_x, self.mapa_y) == (0, -1):
+                            self.chefao_derrotado = True
+                        break
 
     def adicionar_item_inventario(self, posicao):
         """Adiciona o item correto ao inventário com base na posição do mapa.
@@ -289,7 +308,7 @@ class Jogo:
                             # Se já está aberto, fecha
                             self.mostrando_dialogo = False
                         elif self.interacao_npc():
-                            # Se está perto do NPC e fechado, abre
+                            # Está perto do NPC e fechado, abre
                             self.mostrando_dialogo = True
 
             if self.estado_atual == 'MENU':
@@ -313,26 +332,28 @@ class Jogo:
                 # Só move se não estiver em diálogo
                 if not self.mostrando_dialogo:
                     self.jogador.update()
-                    self.atualizar_combate()
-                    # 1. TRATAR TRANSIÇÃO DE TELA
-                    self.tratar_transicao_de_tela()
+                    if self.jogador.estado != 'morrendo':
+                        self.atualizar_combate()
+                        # 1. TRATAR TRANSIÇÃO DE TELA
+                        self.tratar_transicao_de_tela()
 
-                # 2. COLISÃO COM NPC (Só se o NPC estiver no mapa (0,0))
-                if self.mapa_x == 0 and self.mapa_y == 0:
-                    if self.jogador.hitbox.colliderect(self.npc.hitbox):
-                        self.jogador.x, self.jogador.y = pos_anterior_x, pos_anterior_y
-                        self.jogador.hitbox.centerx, self.jogador.hitbox.centery = int(self.jogador.x), int(self.jogador.y)
+                if self.jogador.estado != 'morrendo':
+                    # 2. COLISÃO COM NPC (Só se o NPC estiver no mapa (0,0))
+                    if self.mapa_x == 0 and self.mapa_y == 0:
+                        if self.jogador.hitbox.colliderect(self.npc.hitbox):
+                            self.jogador.x, self.jogador.y = pos_anterior_x, pos_anterior_y
+                            self.jogador.hitbox.centerx, self.jogador.hitbox.centery = int(self.jogador.x), int(self.jogador.y)
 
-                # 3. INTERAÇÃO (ENTER)
-                self.interacao_npc()
+                    # 3. INTERAÇÃO (ENTER)
+                    self.interacao_npc()
 
-                # 4. ITERAÇÃO COM OS COLETÁVEIS
-                posicao_atual = (self.mapa_x, self.mapa_y)
-                if self.coletaveis_coletados.get(posicao_atual) == "no_chao":
-                    if self.jogador.hitbox.colliderect(self.coletavel.hitbox):
-                        self.coletaveis_coletados[posicao_atual] = "coletado"
-                        # Atualiza inventário conforme o mapa em que o item foi coletado
-                        self.adicionar_item_inventario(posicao_atual)
+                    # 4. ITERAÇÃO COM OS COLETÁVEIS
+                    posicao_atual = (self.mapa_x, self.mapa_y)
+                    if self.coletaveis_coletados.get(posicao_atual) == "no_chao":
+                        if self.jogador.hitbox.colliderect(self.coletavel.hitbox):
+                            self.coletaveis_coletados[posicao_atual] = "coletado"
+                            # Atualiza inventário conforme o mapa em que o item foi coletado
+                            self.adicionar_item_inventario(posicao_atual)
 
                 # DESENHO
                 self.tela.fill(self.COR_GRAMA)
@@ -344,6 +365,7 @@ class Jogo:
                 if self.mapa_x == 0 and self.mapa_y == 0:
                     sprites_para_desenhar.append(self.npc)
 
+                posicao_atual = (self.mapa_x, self.mapa_y)
                 if self.coletaveis_coletados.get(posicao_atual) == "no_chao":
                     sprites_para_desenhar.append(self.coletavel)
 
@@ -365,6 +387,19 @@ class Jogo:
                          Mas, para isso, você precisa enfrentar cada um dos inimigos que estão ao nosso redor: à esquerda está o trojan, à direita
                           está o loop infinito e em baixo está o memory leak. Cada um vai lhe dar um item para derrotar o python que está atualmente acima de nós. Conto com sua ajuda! '''
                     )
+
+                # VERIFICAR VITORIA OU DERROTA
+                # Verifica se o python foi derrotado no mapa do topo
+                if self.chefao_derrotado and not self.vitoria_processada:
+                    self.estado_atual = 'FIM_DE_JOGO'
+                    self.venceu_fase = True
+                    self.vitoria_processada = True
+                
+                # Verifica se o jogador morreu (espera a animação de morte terminar)
+                if self.jogador.estado == 'morrendo' and self.jogador.morte_completa and not self.vitoria_processada:
+                    self.estado_atual = 'FIM_DE_JOGO'
+                    self.venceu_fase = False
+                    self.vitoria_processada = True
 
             pygame.display.update()
             self.clock.tick(self.FPS)

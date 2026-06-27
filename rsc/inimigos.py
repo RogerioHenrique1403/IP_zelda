@@ -88,15 +88,15 @@ class Inimigo(Personagem):
     def _carregar_sprites_loop(self, caminho_pasta):
         #usando exatamente 5 frames para a caminhada
         frames_caminhada = 5 
-        
-        andando_baixo = self.carregar_tira(os.path.join(caminho_pasta, 'loop-walkingdown.png'), frames_caminhada)
-        andando_cima = self.carregar_tira(os.path.join(caminho_pasta, 'loop-walking-up.png'), frames_caminhada)
-        andando_direita = self.carregar_tira(os.path.join(caminho_pasta, 'loop-walking.png'), frames_caminhada)
+
+        andando_baixo = self.carregar_tira(os.path.join(caminho_pasta, 'loop-walkingdown.png'), frames_caminhada, ref_h=115)
+        andando_cima = self.carregar_tira(os.path.join(caminho_pasta, 'loop-walking-up.png'), frames_caminhada, ref_h=115)
+        andando_direita = self.carregar_tira(os.path.join(caminho_pasta, 'loop-walking.png'), frames_caminhada, ref_h=115)
         andando_esquerda = [pygame.transform.flip(img, True, False) for img in andando_direita]
 
         # Mantendo 4 frames para idle e morte
-        idle = self.carregar_tira(os.path.join(caminho_pasta, 'loop-idle.png'), 4) 
-        morte = self.carregar_tira(os.path.join(caminho_pasta, 'loop-morte.png'), 4)
+        idle = self.carregar_tira(os.path.join(caminho_pasta, 'loop-idle.png'), 4, ref_h=115) 
+        morte = self.carregar_tira(os.path.join(caminho_pasta, 'loop-morte.png'), 4, ref_h=115)
 
         self.sprites['andando_baixo'] = andando_baixo
         self.sprites['andando_cima'] = andando_cima
@@ -116,21 +116,21 @@ class Inimigo(Personagem):
         self.sprites['morrendo'] = morte
 
     def _carregar_sprites_leak(self, caminho_pasta):
-        andando_direita = self.carregar_tira(os.path.join(caminho_pasta, 'leak-walking.png'), 4)
+        andando_direita = self.carregar_tira(os.path.join(caminho_pasta, 'leak-walking.png'), 4, ref_h=132)
         andando_esquerda = [pygame.transform.flip(img, True, False) for img in andando_direita]
-        andando_cima = self.carregar_tira(os.path.join(caminho_pasta, 'leak-walking-up.png'), 4)
+        andando_cima = self.carregar_tira(os.path.join(caminho_pasta, 'leak-walking-up.png'), 4, ref_h=132)
         
         # Fatiar o idle em 5 frames 
-        idle = self.carregar_tira(os.path.join(caminho_pasta, 'leak-idle.png'), 5)
+        idle = self.carregar_tira(os.path.join(caminho_pasta, 'leak-idle.png'), 5, ref_h=132)
         
         # Se ele não achar o andar para baixo ele usa os 5 frames do idle
         caminho_baixo = os.path.join(caminho_pasta, 'leak-walkingdown.png')
         if os.path.exists(caminho_baixo):
-            andando_baixo = self.carregar_tira(caminho_baixo, 4)
+            andando_baixo = self.carregar_tira(caminho_baixo, 4, ref_h=132)
         else:
             andando_baixo = idle
-
-        morte = self._carregar_fallback(os.path.join(caminho_pasta, 'leak-death.png'), os.path.join(caminho_pasta, 'leak-death-2.png'), 4)
+            
+        morte = self._carregar_fallback(os.path.join(caminho_pasta, 'leak-death.png'), os.path.join(caminho_pasta, 'leak-death-2.png'), 4, ref_h=132)
 
         self.sprites['andando_baixo'] = andando_baixo
         self.sprites['andando_cima'] = andando_cima
@@ -149,50 +149,78 @@ class Inimigo(Personagem):
         
         self.sprites['morrendo'] = morte
 
-    def _carregar_sprites_trojan(self, caminho_pasta):
-        transformacao = self.carregar_imagens_individuais([
-            'TROJAN_TRANSFORMAÇÃO-removebg-preview.png',
-            'TROJAN_TRANSFORMAÇÃO-removebg-preview1.png',
-            'TROJAN_TRANSFORMAÇÃO-removebg-preview2.png',
-            'TROJAN_TRANSFORMAÇÃO-removebg-preview3.png'
-        ], caminho_pasta)
-        
-        # Ajustado para fatiar a tira de movimento para baixo em 4 frames
-        andando_baixo = self.carregar_tira(os.path.join(caminho_pasta, 'TROJAN_ANDANDO_PARA_BAIXO-removebg-preview.png'), 4)
-        
-        # Mantendo 2 frames (arquivos individuais) para cima
-        andando_cima = self.carregar_imagens_individuais([
-            'TROJAN_ANDANDO_PARA_CIMA-removebg-preview.png'
-        ], caminho_pasta)
-        
-        # Mantendo 2 frames (arquivos individuais) para a direita para equilibrar
-        andando_direita = self.carregar_imagens_individuais([
-            'TROJAN_MOVIMENTAÇÃO-removebg-preview.png'
-        ], caminho_pasta)
-        
+    def _carregar_sprites_python(self, caminho_pasta):
+        # Python boss na verdade possui 4 frames em suas spritesheets
+        andando_baixo = self.carregar_tira(os.path.join(caminho_pasta, 'python_walking_down.png'), 4, ref_h=339)
+        andando_direita = self.carregar_tira(os.path.join(caminho_pasta, 'python_walking_right.png'), 4, ref_h=339)
+        andando_cima = self.carregar_tira(os.path.join(caminho_pasta, 'python_walking_up.png'), 4, ref_h=339)
         andando_esquerda = [pygame.transform.flip(img, True, False) for img in andando_direita]
-        
-        morte = self.carregar_imagens_individuais([
-            'TROJAN_DERROTADO-removebg-preview2.png'
-        ], caminho_pasta)
 
-        self.sprites['transformando'] = transformacao
-        self.sprites['parado_baixo'] = transformacao
-        self.sprites['parado_cima'] = transformacao
-        self.sprites['parado_direita'] = transformacao
-        self.sprites['parado_esquerda'] = transformacao
-        
+        idle = andando_baixo[:]
+
+        # Morte também possui 4 frames
+        morte = self.carregar_tira(os.path.join(caminho_pasta, 'python_death.png'), 4, ref_h=339)
+
         self.sprites['andando_baixo'] = andando_baixo
         self.sprites['andando_cima'] = andando_cima
         self.sprites['andando_direita'] = andando_direita
         self.sprites['andando_esquerda'] = andando_esquerda
-        
+
+        self.sprites['parado_baixo'] = idle
+        self.sprites['parado_cima'] = idle
+        self.sprites['parado_direita'] = idle
+        self.sprites['parado_esquerda'] = idle
+
         self.sprites['atacando_baixo'] = andando_baixo
         self.sprites['atacando_cima'] = andando_cima
         self.sprites['atacando_direita'] = andando_direita
         self.sprites['atacando_esquerda'] = andando_esquerda
-        
+
         self.sprites['morrendo'] = morte
+
+    def _carregar_sprites_trojan(self, caminho_pasta):
+        transformacao = self.carregar_tira(os.path.join(caminho_pasta, 'TROJAN_TRANSFORMAÇÃO-removebg-preview.png'), 4, ref_h=192)
+        
+        andando_baixo = self.carregar_tira(os.path.join(caminho_pasta, 'TROJAN_ANDANDO_PARA_BAIXO-removebg-preview.png'), 4, ref_h=192)
+        # andando_cima tem 2 frames no preview2
+        andando_cima = self.carregar_tira(os.path.join(caminho_pasta, 'TROJAN_ANDANDO_PARA_CIMA-removebg-preview2.png'), 2, ref_h=192)
+        # andando_direita tem 2 frames no preview
+        andando_direita = self.carregar_tira(os.path.join(caminho_pasta, 'TROJAN_MOVIMENTAÇÃO-removebg-preview.png'), 2, ref_h=192)
+        andando_esquerda = [pygame.transform.flip(img, True, False) for img in andando_direita]
+        
+        # morte tem 2 frames no preview
+        morte = self.carregar_tira(os.path.join(caminho_pasta, 'TROJAN_DERROTADO-removebg-preview.png'), 2, ref_h=192)
+
+        self.sprites['transformando'] = transformacao
+        self.sprites['morrendo'] = morte
+        
+        if not self.transformado:
+            # Antes de ser atacado, ele fica parado no disfarce (frame 0 da transformação)
+            self.sprites['parado_baixo'] = [transformacao[0]]
+            self.sprites['parado_cima'] = [transformacao[0]]
+            self.sprites['parado_direita'] = [transformacao[0]]
+            self.sprites['parado_esquerda'] = [transformacao[0]]
+            
+            self.sprites['andando_baixo'] = [transformacao[0]]
+            self.sprites['andando_cima'] = [transformacao[0]]
+            self.sprites['andando_direita'] = [transformacao[0]]
+            self.sprites['andando_esquerda'] = [transformacao[0]]
+        else:
+            # Após se transformar, ele usa as sprites normais de movimento
+            self.sprites['parado_baixo'] = [andando_baixo[0]]
+            self.sprites['parado_cima'] = [andando_cima[0]]
+            self.sprites['parado_direita'] = [andando_direita[0]]
+            self.sprites['parado_esquerda'] = [andando_esquerda[0]]
+            
+            self.sprites['andando_baixo'] = andando_baixo
+            self.sprites['andando_cima'] = andando_cima
+            self.sprites['andando_direita'] = andando_direita
+            self.sprites['andando_esquerda'] = andando_esquerda
+            
+        self.sprites['atacando_baixo'] = self.sprites['andando_baixo']
+        self.sprites['atacando_cima'] = self.sprites['andando_cima']
+        self.sprites['atacando_direita'] = self.sprites['andando_direita']
+        self.sprites['atacando_esquerda'] = self.sprites['andando_esquerda']
 
     def _montar_placeholder(self):
         self.image = pygame.Surface((96, 96), pygame.SRCALPHA)
@@ -204,13 +232,30 @@ class Inimigo(Personagem):
             'morrendo', 'transformando'
         ]}
 
-    def carregar_tira(self, caminho_completo, quantidade_frames, target_size=(96, 96)):
+    def _obter_limites_x(self, surface):
+        w, h = surface.get_size()
+        x_min = w
+        x_max = 0
+        for x in range(w):
+            for y in range(h):
+                _, _, _, a = surface.get_at((x, y))
+                if a > 0:
+                    if x < x_min:
+                        x_min = x
+                    if x > x_max:
+                        x_max = x
+        if x_min > x_max:
+            return 0, w
+        return x_min, x_max + 1
+
+    def carregar_tira(self, caminho_completo, quantidade_frames, target_size=(96, 96), ref_h=None):
         if not os.path.exists(caminho_completo):
             raise FileNotFoundError(f'Arquivo não encontrado: {caminho_completo}')
 
         sheet = pygame.image.load(caminho_completo).convert_alpha()
         w, h = sheet.get_size()
 
+        # Remove o fundo
         for x in range(w):
             for y in range(h):
                 r, g, b, _ = sheet.get_at((x, y))
@@ -219,21 +264,46 @@ class Inimigo(Personagem):
                 if is_light or is_medium:
                     sheet.set_at((x, y), (0, 0, 0, 0))
 
-        if quantidade_frames <= 1:
-            return [pygame.transform.scale(sheet, target_size)]
+        # Determina a escala proporcional para manter a proporção da arte original
+        if ref_h is not None:
+            scale = target_size[1] / ref_h
+        else:
+            scale = target_size[1] / h
 
         largura_frame = w // quantidade_frames
         altura_frame = h
+
+        scaled_w = int(largura_frame * scale)
+        scaled_h = int(altura_frame * scale)
 
         imagens = []
         for i in range(quantidade_frames):
             x_ini = i * largura_frame
             corte = sheet.subsurface((x_ini, 0, largura_frame, altura_frame))
-            imagens.append(pygame.transform.scale(corte, target_size))
+            
+            # Redimensiona proporcionalmente para manter a proporção da arte original
+            corte_escalado = pygame.transform.scale(corte, (scaled_w, scaled_h))
+            
+            # Auto-centraliza o conteúdo do frame escalado horizontalmente
+            x_min_esc, x_max_esc = self._obter_limites_x(corte_escalado)
+            content_w_esc = x_max_esc - x_min_esc
+            
+            final_frame = pygame.Surface(target_size, pygame.SRCALPHA)
+            
+            if content_w_esc > 0:
+                shift_x = int((target_size[0] / 2) - (x_min_esc + content_w_esc / 2))
+            else:
+                shift_x = int((target_size[0] - scaled_w) / 2)
+            
+            # Alinha no chão (borda inferior da tela/canvas de 96x96)
+            shift_y = target_size[1] - scaled_h
+            
+            final_frame.blit(corte_escalado, (shift_x, shift_y))
+            imagens.append(final_frame)
 
         return imagens
 
-    def carregar_imagens_individuais(self, nomes_arquivos, caminho_pasta, target_size=(96, 96)):
+    def carregar_imagens_individuais(self, nomes_arquivos, caminho_pasta, target_size=(96, 96), ref_h=None):
         imagens = []
         for nome in nomes_arquivos:
             caminho_completo = os.path.join(caminho_pasta, nome)
@@ -251,18 +321,41 @@ class Inimigo(Personagem):
                     is_medium = (135 <= r <= 175) and (135 <= g <= 175) and (135 <= b <= 175)
                     if is_light or is_medium:
                         sheet.set_at((x, y), (0, 0, 0, 0))
-                        
-            imagens.append(pygame.transform.scale(sheet, target_size))
+            
+            if ref_h is not None:
+                scale = target_size[1] / ref_h
+            else:
+                scale = target_size[1] / h
+                
+            scaled_w = int(w * scale)
+            scaled_h = int(h * scale)
+            
+            scaled_img = pygame.transform.scale(sheet, (scaled_w, scaled_h))
+            
+            # Auto-centraliza horizontalmente
+            x_min, x_max = self._obter_limites_x(scaled_img)
+            content_w = x_max - x_min
+            
+            final_frame = pygame.Surface(target_size, pygame.SRCALPHA)
+            if content_w > 0:
+                shift_x = int((target_size[0] / 2) - (x_min + content_w / 2))
+            else:
+                shift_x = int((target_size[0] - scaled_w) / 2)
+            
+            # Alinha no chão (borda inferior)
+            shift_y = target_size[1] - scaled_h
+            final_frame.blit(scaled_img, (shift_x, shift_y))
+            imagens.append(final_frame)
             
         if not imagens:
             return [pygame.Surface(target_size, pygame.SRCALPHA)]
         return imagens
-    
-    def _carregar_fallback(self, caminho_principal, caminho_fallback, quantidade_frames):
+
+    def _carregar_fallback(self, caminho_principal, caminho_fallback, quantidade_frames, ref_h=None):
         if os.path.exists(caminho_principal):
-            return self.carregar_tira(caminho_principal, quantidade_frames)
+            return self.carregar_tira(caminho_principal, quantidade_frames, ref_h=ref_h)
         if os.path.exists(caminho_fallback):
-            return self.carregar_tira(caminho_fallback, quantidade_frames)
+            return self.carregar_tira(caminho_fallback, quantidade_frames, ref_h=ref_h)
         raise FileNotFoundError('Nenhum arquivo de fallback encontrado')
 
     def update(self, jogador):
@@ -278,8 +371,11 @@ class Inimigo(Personagem):
         estado_anterior = self.estado
 
         if self.tipo == 'trojan' and not self.transformado:
-            self.estado = 'transformando'
-            self.animar()
+            if self.estado == 'transformando':
+                self.animar()
+            else:
+                self.estado = 'parado'
+                self.animar()
             return
 
         alvo_rect = getattr(jogador, 'hitbox', jogador.rect)
@@ -343,8 +439,20 @@ class Inimigo(Personagem):
                         self.index_animacao = len(animacao) - 1
                         self.morto_completamente = True
                     elif self.estado == 'transformando':
-                        # Para o Trojan não piscar, ele fica no último frame do brinquedo até ser atacado
-                        self.index_animacao = len(animacao) - 1 
+                        # A animação de transformação terminou!
+                        self.transformado = True
+                        self.velocidade = 1.8
+                        self.vida_max = 120
+                        self.vida = self.vida_max
+                        
+                        # Recarrega as sprites para o Trojan em sua forma final ativa
+                        self._carregar_sprites_trojan(os.path.join(
+                            os.path.dirname(os.path.abspath(__file__)),
+                            '..', 'res', 'Inimigos sprite', 'Python sprite'
+                        ))
+                        
+                        self.estado = 'parado'
+                        self.index_animacao = 0
                     else:
                         self.index_animacao = 0
 
@@ -354,7 +462,10 @@ class Inimigo(Personagem):
     def atacar(self, jogador):
         agora = pygame.time.get_ticks()
         if agora - self.ultimo_ataque > self.cooldown_ataque:
-            jogador.vida -= self.dano
+            if hasattr(jogador, 'receber_dano'):
+                jogador.receber_dano(self.dano, self.hitbox.centerx, self.hitbox.centery)
+            else:
+                jogador.vida -= self.dano
             self.ultimo_ataque = agora
 
     def receber_dano(self, quantidade):
@@ -370,24 +481,14 @@ class Inimigo(Personagem):
         self.tempo_invencivel = agora
 
         if self.tipo == 'trojan' and not self.transformado:
-            self.transformado = True
-            self.velocidade = 1.8
-            self.vida_max = 120
-            self.vida = self.vida_max
-            
-            self._carregar_sprites_trojan(os.path.join(
-                os.path.dirname(os.path.abspath(__file__)),
-                '..', 'res', 'Inimigos sprite', 'Python sprite'
-            ))
-            
-            if 'andando_baixo' in self.sprites and self.sprites['andando_baixo']:
-                self.sprites['parado_baixo'] = [self.sprites['andando_baixo'][0]]
-                self.sprites['parado_cima'] = [self.sprites['andando_cima'][0]]
-                self.sprites['parado_direita'] = [self.sprites['andando_direita'][0]]
-                self.sprites['parado_esquerda'] = [self.sprites['andando_esquerda'][0]]
-
-            self.estado = 'parado'
+            # Começa a animação de transformação e impede novos danos durante o processo
+            self.estado = 'transformando'
             self.index_animacao = 0
+            self.tempo_animacao = agora
+            self.stunado = False # não fica stunado enquanto se transforma
+            self.invencivel = True # fica invencível durante a transformação para não morrer no meio
+            self.tempo_invencivel = agora + 1000 # 1 segundo de invencibilidade
+            return
 
         if self.vida > 0:
             self.x += 20 if self.direcao == 'esquerda' else -20
