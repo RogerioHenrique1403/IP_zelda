@@ -1,10 +1,18 @@
-# [The Python's Trial]
+# The Python's Trial
 
 **Disciplina:** Introdução a Programação - UFPE  
 **Semestre:**  2026.1
 
+"Bem-vindo ao *The Python's Trial*, o pesadelo real de todo estudante de TI!
+
+Um erro crítico corrompeu o sistema acadêmico, e a última linha de defesa é você: o Calouro de IP. Armado apenas com sua capa de estudante e uma espada de "debug" corpo a corpo, você precisará limpar o código na marra.
+Sob a orientação do lendário e enferrujado C-Véio, um compilador das antigas, sua missão é provar seu valor derrotando os três maiores traumas de qualquer programador iniciante: escape do ácido do Memory Leak, quebre o ciclo mortal do Loop Infinito e desmascare a traição do Trojan.
+Somente ao dominar a memória, a lógica e a segurança do sistema, você terá acesso ao confronto final contra o chefão supremo: a temível hidra de cabos conhecida como Python.
+
+Empunhe sua espada, rebata os SyntaxErrors e lute para dar orgulho ao seu mentor. O semestre já começou."
+
 ## 👥 Membros da Equipe
-* **[Seu Nome]**: [Seu GitHub e/ou LinkedIn]
+* **Rafaela Lins**: [Seu GitHub e/ou LinkedIn]
 * **[Nome do Colega 1]**: [GitHub e/ou LinkedIn]
 * **[Nome do Colega 2]**: [GitHub e/ou LinkedIn]
 
