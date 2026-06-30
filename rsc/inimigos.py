@@ -5,35 +5,38 @@ from personagem import Personagem
 class Inimigo(Personagem):
     def __init__(self, x, y, interface, tipo='loop'):
         self.tipo = tipo
-        self.hitbox_rect = (48, 48)
 
         if tipo == 'python':
-            vida = 150
+            self.hitbox_rect = (120, 120)
+            vida = 400
             velocidade = 2.0
             dano = 25
-            raio_visao = 300
-            alcance_ataque = 35
+            raio_visao = 350
+            alcance_ataque = 65
             cooldown_ataque = 800
         elif tipo == 'trojan':
+            self.hitbox_rect = (64, 64)
             vida = 70
             velocidade = 0.0 # começa parado
             dano = 10
             raio_visao = 220
-            alcance_ataque = 30
+            alcance_ataque = 40
             cooldown_ataque = 1000
         elif tipo == 'leak':
+            self.hitbox_rect = (64, 64)
             vida = 60
             velocidade = 1.8
             dano = 10
             raio_visao = 260
-            alcance_ataque = 24
+            alcance_ataque = 32
             cooldown_ataque = 1000
         else: # loop
+            self.hitbox_rect = (64, 64)
             vida = 70
             velocidade = 2.0
             dano = 10
             raio_visao = 280
-            alcance_ataque = 25
+            alcance_ataque = 35
             cooldown_ataque = 1000
 
         super().__init__(x, y, velocidade=velocidade, vida=vida, vida_max=vida)
@@ -55,12 +58,20 @@ class Inimigo(Personagem):
         self.direcao = 'baixo'
         self.sprites = {}
 
+        # Python boss variaveis de ataque
+        if self.tipo == 'python':
+            self.tempo_ultimo_ataque_especial = pygame.time.get_ticks()
+            self.ataque_especial_ativo = False
+            self.tempo_inicio_especial = 0
+            self.meteoros = []
+            self.proximo_spawn_meteoro = 0
+
         self._carregar_sprites()
 
         if self.sprites.get('parado_baixo'):
             self.image = self.sprites['parado_baixo'][0]
         else:
-            self.image = pygame.Surface((96, 96), pygame.SRCALPHA)
+            self.image = pygame.Surface((192, 192) if tipo == 'python' else (128, 128), pygame.SRCALPHA)
             self.image.fill((255, 0, 0))
 
         self.rect = self.image.get_rect(topleft=(x, y))
@@ -151,15 +162,15 @@ class Inimigo(Personagem):
 
     def _carregar_sprites_python(self, caminho_pasta):
         # Python boss na verdade possui 4 frames em suas spritesheets
-        andando_baixo = self.carregar_tira(os.path.join(caminho_pasta, 'python_walking_down.png'), 4, ref_h=339)
-        andando_direita = self.carregar_tira(os.path.join(caminho_pasta, 'python_walking_right.png'), 4, ref_h=339)
-        andando_cima = self.carregar_tira(os.path.join(caminho_pasta, 'python_walking_up.png'), 4, ref_h=339)
+        andando_baixo = self.carregar_tira(os.path.join(caminho_pasta, 'python_walking_down.png'), 4, target_size=(192, 192), ref_h=339)
+        andando_direita = self.carregar_tira(os.path.join(caminho_pasta, 'python_walking_right.png'), 4, target_size=(192, 192), ref_h=339)
+        andando_cima = self.carregar_tira(os.path.join(caminho_pasta, 'python_walking_up.png'), 4, target_size=(192, 192), ref_h=339)
         andando_esquerda = [pygame.transform.flip(img, True, False) for img in andando_direita]
 
         idle = andando_baixo[:]
 
         # Morte também possui 4 frames
-        morte = self.carregar_tira(os.path.join(caminho_pasta, 'python_death.png'), 4, ref_h=339)
+        morte = self.carregar_tira(os.path.join(caminho_pasta, 'python_death.png'), 4, target_size=(192, 192), ref_h=339)
 
         self.sprites['andando_baixo'] = andando_baixo
         self.sprites['andando_cima'] = andando_cima
@@ -223,7 +234,8 @@ class Inimigo(Personagem):
         self.sprites['atacando_esquerda'] = self.sprites['andando_esquerda']
 
     def _montar_placeholder(self):
-        self.image = pygame.Surface((96, 96), pygame.SRCALPHA)
+        size = (192, 192) if self.tipo == 'python' else (128, 128)
+        self.image = pygame.Surface(size, pygame.SRCALPHA)
         self.image.fill((255, 0, 0))
         self.sprites = {chave: [self.image] for chave in [
             'parado_baixo', 'parado_cima', 'parado_direita', 'parado_esquerda',
@@ -248,7 +260,7 @@ class Inimigo(Personagem):
             return 0, w
         return x_min, x_max + 1
 
-    def carregar_tira(self, caminho_completo, quantidade_frames, target_size=(96, 96), ref_h=None):
+    def carregar_tira(self, caminho_completo, quantidade_frames, target_size=(128, 128), ref_h=None):
         if not os.path.exists(caminho_completo):
             raise FileNotFoundError(f'Arquivo não encontrado: {caminho_completo}')
 
@@ -303,7 +315,7 @@ class Inimigo(Personagem):
 
         return imagens
 
-    def carregar_imagens_individuais(self, nomes_arquivos, caminho_pasta, target_size=(96, 96), ref_h=None):
+    def carregar_imagens_individuais(self, nomes_arquivos, caminho_pasta, target_size=(128, 128), ref_h=None):
         imagens = []
         for nome in nomes_arquivos:
             caminho_completo = os.path.join(caminho_pasta, nome)
@@ -362,11 +374,71 @@ class Inimigo(Personagem):
         self.cooldowns()
 
         if self.estado == 'morrendo':
+            if self.tipo == 'python' and hasattr(self, 'meteoros'):
+                self.meteoros.clear()
             self.animar()
             return
 
         if self.stunado:
             return
+
+        agora = pygame.time.get_ticks()
+
+        # Lógica de ataque especial para o Python boss
+        if self.tipo == 'python':
+            if not hasattr(self, 'tempo_ultimo_ataque_especial'):
+                self.tempo_ultimo_ataque_especial = agora
+                self.ataque_especial_ativo = False
+                self.tempo_inicio_especial = 0
+                self.meteoros = []
+                self.proximo_spawn_meteoro = 0
+
+            # Atualiza sempre os meteoros existentes
+            for met in self.meteoros[:]:
+                met.update(jogador)
+                if met.destruido:
+                    self.meteoros.remove(met)
+
+            if self.ataque_especial_ativo:
+                if agora - self.tempo_inicio_especial >= 4000:
+                    self.ataque_especial_ativo = False
+                    self.tempo_ultimo_ataque_especial = agora
+                else:
+                    self.estado = 'parado'
+                    self.velocidade = 0.0
+
+                    if agora >= self.proximo_spawn_meteoro:
+                        import random
+                        target_rect = getattr(jogador, 'hitbox', jogador.rect)
+                        px = target_rect.centerx + random.randint(-180, 180)
+                        py = target_rect.centery + random.randint(-180, 180)
+                        px = max(60, min(1140, px))
+                        py = max(60, min(660, py))
+                        
+                        self.meteoros.append(MeteoroCodigo(px, py))
+                        self.proximo_spawn_meteoro = agora + 500
+
+                self.animar()
+
+                self.hitbox.centerx = int(self.x)
+                self.hitbox.centery = int(self.y)
+                self.rect.center = self.hitbox.center
+                return
+            else:
+                self.velocidade = 2.0
+                alvo_rect = getattr(jogador, 'hitbox', jogador.rect)
+                dx = alvo_rect.centerx - self.hitbox.centerx
+                dy = alvo_rect.centery - self.hitbox.centery
+                distancia = (dx ** 2 + dy ** 2) ** 0.5
+                if distancia < self.raio_visao and agora - self.tempo_ultimo_ataque_especial >= 8000:
+                    self.ataque_especial_ativo = True
+                    self.tempo_inicio_especial = agora
+                    self.proximo_spawn_meteoro = agora
+                    self.meteoros = []
+                    self.estado = 'parado'
+                    self.velocidade = 0.0
+                    self.animar()
+                    return
 
         estado_anterior = self.estado
 
@@ -400,7 +472,6 @@ class Inimigo(Personagem):
         else:
             self.estado = 'parado'
 
-        # Resetamos a animação apenas se o estado mudar (ex: de parado para andando)
         if self.estado != estado_anterior:
             self.index_animacao = 0
             self.tempo_animacao = pygame.time.get_ticks()
@@ -502,3 +573,130 @@ class Inimigo(Personagem):
             self.stunado = False
         if self.invencivel and agora - self.tempo_invencivel >= self.cooldown_hit:
             self.invencivel = False
+
+    def desenhar_zonas_vermelhas(self, tela):
+        if self.tipo == 'python' and hasattr(self, 'meteoros'):
+            for met in self.meteoros:
+                met.desenhar_zona(tela)
+
+    def desenhar_meteoros_e_explosoes(self, tela):
+        if self.tipo == 'python' and hasattr(self, 'meteoros'):
+            for met in self.meteoros:
+                met.desenhar_meteoro(tela)
+
+
+class MeteoroCodigo:
+    def __init__(self, x_alvo, y_alvo):
+        self.x_alvo = x_alvo
+        self.y_alvo = y_alvo
+        self.x = x_alvo
+        self.y = -100  
+        
+        self.tempo_spawn = pygame.time.get_ticks()
+        self.tempo_aviso = 1200  
+        self.caindo = False
+        self.explodindo = False
+        self.tempo_explosao = 0
+        self.destruido = False
+        
+        self.velocidade = 22  
+        self.raio_dano = 55  
+        self.dano = 15
+        
+        #Código que podem cair
+        codigos = [
+            "SyntaxError: invalid syntax",
+            "IndexError: list index out of range",
+            "ZeroDivisionError: division by zero",
+            "KeyError: 'python'",
+            "RecursionError: maximum depth exceeded",
+            "NameError: name 'boss' is not defined",
+            "TypeError: unsupported operand type(s)",
+            "SystemExit",
+            "KeyboardInterrupt",
+            "AttributeError: 'NoneType' has no attribute",
+            "import os; os.system('rm -rf /')",
+            "while True: print('ERROR')"
+        ]
+        import random
+        self.texto = random.choice(codigos)
+        self.cor = (57, 255, 20) if random.random() > 0.4 else (255, 50, 50)
+        
+        self.fonte = pygame.font.SysFont('Courier New', 16, bold=True)
+
+    def update(self, jogador):
+        agora = pygame.time.get_ticks()
+        
+        if not self.caindo and not self.explodindo:
+            if agora - self.tempo_spawn >= self.tempo_aviso:
+                self.caindo = True
+                
+        elif self.caindo:
+            self.y += self.velocidade
+            if self.y >= self.y_alvo:
+                self.y = self.y_alvo
+                self.caindo = False
+                self.explodindo = True
+                self.tempo_explosao = agora
+                
+                #checagem de colisão
+                alvo_rect = getattr(jogador, 'hitbox', jogador.rect)
+                dx = alvo_rect.centerx - self.x_alvo
+                dy = alvo_rect.centery - self.y_alvo
+                dist = (dx**2 + dy**2)**0.5
+                if dist <= self.raio_dano:
+                    jogador.receber_dano(self.dano, self.x_alvo, self.y_alvo)
+                    
+        elif self.explodindo:
+            if agora - self.tempo_explosao >= 400:  
+                self.destruido = True
+
+    def desenhar_zona(self, tela):
+        agora = pygame.time.get_ticks()
+        if not self.explodindo:
+            tempo_decorrido = agora - self.tempo_spawn
+            import math
+            pulso = abs(math.sin(tempo_decorrido * 0.01))
+            raio_atual = int(self.raio_dano * (0.85 + 0.15 * pulso))
+            
+            superficie_alfa = pygame.Surface((raio_atual * 2, raio_atual * 2), pygame.SRCALPHA)
+            pygame.draw.circle(superficie_alfa, (255, 0, 0, 70), (raio_atual, raio_atual), raio_atual)
+            pygame.draw.circle(superficie_alfa, (255, 0, 0, 200), (raio_atual, raio_atual), raio_atual, 2)
+            
+            tela.blit(superficie_alfa, (self.x_alvo - raio_atual, self.y_alvo - raio_atual))
+            
+            pygame.draw.line(tela, (255, 0, 0), (self.x_alvo - 10, self.y_alvo), (self.x_alvo + 10, self.y_alvo), 2)
+            pygame.draw.line(tela, (255, 0, 0), (self.x_alvo, self.y_alvo - 10), (self.x_alvo, self.y_alvo + 10), 2)
+
+    def desenhar_meteoro(self, tela):
+        agora = pygame.time.get_ticks()
+        if self.caindo:
+            surf_texto = self.fonte.render(self.texto, True, self.cor)
+            rect_texto = surf_texto.get_rect(center=(int(self.x), int(self.y)))
+    
+            surf_sombra = self.fonte.render(self.texto, True, (0, 0, 0))
+            tela.blit(surf_sombra, (rect_texto.x + 1, rect_texto.y + 1))
+            tela.blit(surf_texto, rect_texto)
+            
+            pygame.draw.line(tela, (self.cor[0], self.cor[1], self.cor[2], 100), 
+                             (self.x_alvo, 0), (self.x_alvo, int(self.y)), 1)
+                             
+        elif self.explodindo:
+            tempo_decorrido = agora - self.tempo_explosao
+            progresso = min(1.0, tempo_decorrido / 400.0)
+            
+            partes = self.texto.split()
+            for idx, parte in enumerate(partes):
+                import math
+                angulo = (idx / len(partes)) * 2 * math.pi
+                dist = progresso * 40
+                px = self.x_alvo + math.cos(angulo) * dist
+                py = self.y_alvo + math.sin(angulo) * dist
+                
+                alfa = int((1.0 - progresso) * 255)
+                surf_p = self.fonte.render(parte, True, self.cor)
+                surf_final = surf_p.copy()
+                surf_final.fill((255, 255, 255, alfa), special_flags=pygame.BLEND_RGBA_MULT)
+                
+                rect_p = surf_final.get_rect(center=(int(px), int(py)))
+                tela.blit(surf_final, rect_p)

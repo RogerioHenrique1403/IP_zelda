@@ -167,7 +167,7 @@ class Interface:
 
     def desenhar_hud_jogo(self, tela, vida_atual, inventario_jogador):
         """ Desenha a vida e o placar de coletáveis durante a gameplay """
-        # 1. BARRA DE VIDA
+        # BARRA DE VIDA
         if vida_atual > 80:
             chave = 100
         elif vida_atual > 60:
@@ -198,7 +198,7 @@ class Interface:
         largura_maxima_texto = largura_caixa - 40 # Margem interna
         espacamento_y = 30
         
-        # 1. Lógica de Quebra de Linha (Word Wrap) antecipada para calcular altura
+        # Lógica de Quebra de Linha (Word Wrap) antecipada para calcular altura
         palavras = mensagem.replace('\n', ' ').split(' ')
         linhas = []
         linha_atual = ""
@@ -213,34 +213,34 @@ class Interface:
                 linha_atual = palavra + " "
         linhas.append(linha_atual)
 
-        # 2. Calcular Altura Dinâmica
+        # Calcular Altura Dinâmica
         # (Topo + Nome + Linhas de Texto + Rodapé + Margem)
         altura_caixa = 60 + (len(linhas) * espacamento_y) + 40
         x = 50
         y = self.config.altura - altura_caixa - 30
 
-        # 3. Desenhar Fundo da caixa
+        # Desenhar Fundo da caixa
         rect_caixa = pygame.Rect(x, y, largura_caixa, altura_caixa)
         pygame.draw.rect(tela, (0, 0, 0), rect_caixa)
         pygame.draw.rect(tela, (255, 255, 255), rect_caixa, 3) 
 
-        # 4. Desenhar Nome do Personagem
+        # Desenhar Nome do Personagem
         surf_nome = self.fonte_placar.render(f"[{nome}]", True, (255, 215, 0))
         tela.blit(surf_nome, (x + 20, y + 15))
 
-        # 5. Desenhar cada linha de texto
+        # Desenhar cada linha de texto
         pos_y_texto = y + 55
         for linha in linhas:
             surf_msg = self.fonte_placar.render(linha.strip(), True, (255, 255, 255))
             tela.blit(surf_msg, (x + 20, pos_y_texto))
             pos_y_texto += espacamento_y
 
-        # 6. Instrução de rodapé
+        # Instrução de rodapé
         surf_inst = self.fonte_placar.render("ENTER para fechar", True, (150, 150, 150))
         tela.blit(surf_inst, (x + largura_caixa - 220, y + altura_caixa - 35))
 
 
-    def desenhar_menu(self, tela):
+    def desenhar_menu(self, tela, eventos=[]):
         """ Desenha a tela inicial de Menu e retorna True se clicar em Começar """
         # Desenha fundo do menu
         if self.fundo_menu:
@@ -262,12 +262,15 @@ class Interface:
 
         # Detecta clique e hover do mouse
         pos_mouse = pygame.mouse.get_pos()
-        clique_mouse = pygame.mouse.get_pressed()
+        clique_mouse = False
+        for event in eventos:
+            if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                clique_mouse = True
 
         cor_botao = (0, 0, 0)  # fundo preto
         if rect_botao.collidepoint(pos_mouse):
             cor_botao = (50, 50, 50)  # ligeiro destaque no hover
-            if clique_mouse[0] == 1:  # Clique com botão esquerdo
+            if clique_mouse:  # Clique com botão esquerdo
                 return "JOGANDO"
 
         pygame.draw.rect(tela, cor_botao, rect_botao, border_radius=10)
@@ -316,7 +319,7 @@ class Interface:
             y = self.config.altura - altura - margem
             pygame.draw.rect(tela, (0, 0, 0), (x, y, largura, altura))
 
-    def desenhar_fim_de_jogo(self, tela, venceu=False):
+    def desenhar_fim_de_jogo(self, tela, venceu=False, eventos=[]):
         """ Desenha a tela de Vitória ou Derrota e gerencia os cliques nos botões """
         
         # 1. Desenha a imagem de fundo correspondente
@@ -336,15 +339,18 @@ class Interface:
 
         # 2. Texto Principal (Apenas desenha se VENCEU, pois o GAME OVER já está na imagem)
         if venceu:
-            texto_principal = self.fonte_titulo.render( True, (255, 215, 0))
+            texto_principal = self.fonte_titulo.render("VOCÊ VENCEU!", True, (255, 215, 0))
             rect_principal = texto_principal.get_rect(center=(self.config.largura // 2, 150))
             tela.blit(texto_principal, rect_principal)
 
         # 3. Configurações de clique do mouse
         pos_mouse = pygame.mouse.get_pos()
-        clique_mouse = pygame.mouse.get_pressed()
+        clique_mouse = False
+        for event in eventos:
+            if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                clique_mouse = True
 
-        # --- BOTÃO 1: JOGAR DE NOVO 
+        # JOGAR DE NOVO 
         largura_btn_novo, altura_btn_novo = 205, 150  # Maior para preencher bem o monitor central
         x_btn_novo = (self.config.largura // 2) - (largura_btn_novo // 2)
         y_btn_novo = 300  # Posição centralizada verticalmente no monitor do meio
@@ -352,8 +358,8 @@ class Interface:
         
         cor_btn_novo = (0,0,0)  # Cor escura para camuflar no monitor apagado
         if rect_btn_novo.collidepoint(pos_mouse):
-            cor_btn_novo = (55, 55, 55)  # Realce no hover
-            if clique_mouse[0] == 1:
+            cor_btn_novo = (55, 55, 55)
+            if clique_mouse:
                 return "REINICIAR"
 
         # --- BOTÃO 2: VOLTAR AO MENU 
@@ -365,16 +371,16 @@ class Interface:
         cor_btn_menu = (0,0,0)  # Cor preta padrão
         if rect_btn_menu.collidepoint(pos_mouse):
             cor_btn_menu = (55, 55, 55)
-            if clique_mouse[0] == 1:
+            if clique_mouse:
                 return "VOLTAR_MENU"
 
-        # 4. Desenhar Botão Jogar de Novo
+        # Desenhar Botão Jogar de Novo
         pygame.draw.rect(tela, cor_btn_novo, rect_btn_novo, border_radius=6)
         pygame.draw.rect(tela, (0,0,0), rect_btn_novo, 1, border_radius=6) # Borda sutil
         txt_novo = self.fonte_botoes.render("JOGAR DE NOVO", True, (255, 255, 255))
         tela.blit(txt_novo, txt_novo.get_rect(center=rect_btn_novo.center))
 
-        # 5. Desenhar Botão Voltar ao Menu
+        # Desenhar Botão Voltar ao Menu
         pygame.draw.rect(tela, cor_btn_menu, rect_btn_menu, border_radius=6)
         pygame.draw.rect(tela, (0,0,0), rect_btn_menu, 1, border_radius=6)
         txt_menu = self.fonte_botoes.render("VOLTAR AO MENU", True, (255, 255, 255))

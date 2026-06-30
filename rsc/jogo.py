@@ -249,6 +249,10 @@ class Jogo:
         """Atualiza inimigos e verifica se o jogador derrotou os três chefes."""
         for inimigo in self.inimigos[:]:
             if inimigo.vida <= 0:
+                # Check if this enemy is the python in the top map
+                if inimigo.tipo == 'python' and (self.mapa_x, self.mapa_y) == (0, -1):
+                    self.chefao_derrotado = True
+
                 self.inimigos.remove(inimigo)
                 self.inimigos_derrotados += 1
 
@@ -268,9 +272,6 @@ class Jogo:
                 for inimigo in self.inimigos:
                     if area_ataque.colliderect(inimigo.hitbox):
                         inimigo.receber_dano(25)
-                        # Check if this enemy is the python in the top map
-                        if inimigo.tipo == 'python' and (self.mapa_x, self.mapa_y) == (0, -1):
-                            self.chefao_derrotado = True
                         break
 
     def adicionar_item_inventario(self, posicao):
@@ -295,7 +296,8 @@ class Jogo:
     def run(self):
         rodando = True
         while rodando:
-            for event in pygame.event.get():
+            eventos = pygame.event.get()
+            for event in eventos:
                 if event.type == pygame.QUIT:
                     rodando = False
                     pygame.quit()
@@ -312,17 +314,20 @@ class Jogo:
                             self.mostrando_dialogo = True
 
             if self.estado_atual == 'MENU':
-                self.estado_atual = self.interface.desenhar_menu(self.tela)
+                self.estado_atual = self.interface.desenhar_menu(self.tela, eventos)
 
             elif self.estado_atual == 'FIM_DE_JOGO':
                 comando = self.interface.desenhar_fim_de_jogo(
-                    self.tela, venceu=self.venceu_fase)
+                    self.tela, venceu=self.venceu_fase, eventos=eventos)
                 if comando == "REINICIAR":
                     self.mapa_x, self.mapa_y = 0, 0 # Reseta coordenadas ao reiniciar
                     self.carregar_mapa_atual()
                     self.inicializar_elementos_jogo()
                     self.estado_atual = 'JOGANDO'
                 elif comando == "VOLTAR_MENU":
+                    self.mapa_x, self.mapa_y = 0, 0 # Reseta coordenadas ao voltar para o menu
+                    self.carregar_mapa_atual()
+                    self.inicializar_elementos_jogo()
                     self.estado_atual = 'MENU'
 
             elif self.estado_atual == 'JOGANDO':
@@ -334,20 +339,20 @@ class Jogo:
                     self.jogador.update()
                     if self.jogador.estado != 'morrendo':
                         self.atualizar_combate()
-                        # 1. TRATAR TRANSIÇÃO DE TELA
+                        # TRATAR TRANSIÇÃO DE TELA
                         self.tratar_transicao_de_tela()
 
                 if self.jogador.estado != 'morrendo':
-                    # 2. COLISÃO COM NPC (Só se o NPC estiver no mapa (0,0))
+                    # COLISÃO COM NPC (Só se o NPC estiver no mapa (0,0))
                     if self.mapa_x == 0 and self.mapa_y == 0:
                         if self.jogador.hitbox.colliderect(self.npc.hitbox):
                             self.jogador.x, self.jogador.y = pos_anterior_x, pos_anterior_y
                             self.jogador.hitbox.centerx, self.jogador.hitbox.centery = int(self.jogador.x), int(self.jogador.y)
 
-                    # 3. INTERAÇÃO (ENTER)
+                    # INTERAÇÃO (ENTER)
                     self.interacao_npc()
 
-                    # 4. ITERAÇÃO COM OS COLETÁVEIS
+                    # ITERAÇÃO COM OS COLETÁVEIS
                     posicao_atual = (self.mapa_x, self.mapa_y)
                     if self.coletaveis_coletados.get(posicao_atual) == "no_chao":
                         if self.jogador.hitbox.colliderect(self.coletavel.hitbox):
@@ -359,6 +364,11 @@ class Jogo:
                 self.tela.fill(self.COR_GRAMA)
                 if self.mapa:
                     self.mapa.desenhar(self.tela)
+
+                # Desenha zonas vermelhas de perigo (abaixo dos personagens)
+                for inimigo in self.inimigos:
+                    if hasattr(inimigo, 'desenhar_zonas_vermelhas'):
+                        inimigo.desenhar_zonas_vermelhas(self.tela)
 
                 # Y-SORT
                 sprites_para_desenhar = [self.jogador]
@@ -375,6 +385,11 @@ class Jogo:
 
                 for sprite in sprites_para_desenhar:
                     self.tela.blit(sprite.image, sprite.rect)
+
+                # Desenha meteoros caindo e explosões (acima dos personagens)
+                for inimigo in self.inimigos:
+                    if hasattr(inimigo, 'desenhar_meteoros_e_explosoes'):
+                        inimigo.desenhar_meteoros_e_explosoes(self.tela)
 
                 self.interface.desenhar_hud_jogo(self.tela, self.jogador.vida, self.inventario)
 
