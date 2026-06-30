@@ -12,15 +12,30 @@ class Interface:
 
         # Inicializa as fontes do PyGame
         pygame.font.init()
-        self.fonte_placar = pygame.font.SysFont('Arial', 24, bold=True)
-        self.fonte_titulo = pygame.font.SysFont('Arial', 60, bold=True)
-        self.fonte_botoes = pygame.font.SysFont('Arial', 32, bold=True)
 
+        caminho_fonte = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'res', 'Fonts', 'upheaval' ,'upheavtt.ttf')
+        
+        if os.path.exists(caminho_fonte):
+            self.fonte_placar = pygame.font.Font(caminho_fonte, 20)
+            self.fonte_titulo = pygame.font.Font(caminho_fonte, 48)
+            self.fonte_botoes = pygame.font.Font(caminho_fonte, 24) # <--- Esta muda a fonte do botão COMEÇAR e FIM DE JOGO
+        else:
+            # Caso não ache o arquivo, mantém o comportamento atual
+            self.fonte_placar = pygame.font.SysFont('Arial', 24, bold=True)
+            self.fonte_titulo = pygame.font.SysFont('Arial', 60, bold=True)
+            self.fonte_botoes = pygame.font.SysFont('Arial', 32, bold=True)
+        
         self.carregar_imagens_vida()
 
         # Carrega imagem de fundo do menu (fundo_menu) se existir
         self.fundo_menu = None
         self.carregar_fundo_menu()
+
+        # Carrega imagens de fim de jogo (vitória e derrota)
+        self.fundo_win = None
+        self.fundo_game_over = None
+        self.carregar_fundos_fim_de_jogo()
+
 
         # Carrega sprites do inventário
         self.inventario_imgs = {}
@@ -91,6 +106,35 @@ class Interface:
                 print(f"ERRO ao carregar fundo_menu: {e}")
         else:
             self.fundo_menu = None
+
+    def carregar_fundos_fim_de_jogo(self):
+       
+        diretorio_script = os.path.dirname(os.path.abspath(__file__))
+        pasta_imagens = os.path.join(diretorio_script, '..', 'res', 'Layout_Examples')
+
+        if not os.path.exists(pasta_imagens):
+            print(f"--- AVISO: Pasta {pasta_imagens} não encontrada. Fundos de fim de jogo serão pretos.")
+            return
+
+        # Carregar imagem de vitória (fundo_win.png)
+        caminho_win = os.path.join(pasta_imagens, 'fundo_win.png')
+        if os.path.exists(caminho_win):
+            try:
+                self.fundo_win = pygame.image.load(caminho_win).convert()
+                # Opcional: redimensionar para o tamanho da tela
+                self.fundo_win = pygame.transform.scale(self.fundo_win, (self.config.largura, self.config.altura))
+            except Exception as e:
+                print(f"ERRO ao carregar fundo_win.png: {e}")
+
+        # Carregar imagem de derrota (fundo_game_over.png)
+        caminho_loss = os.path.join(pasta_imagens, 'fundo_game_over.png')
+        if os.path.exists(caminho_loss):
+            try:
+                self.fundo_game_over = pygame.image.load(caminho_loss).convert()
+                # Opcional: redimensionar para o tamanho da tela
+                self.fundo_game_over = pygame.transform.scale(self.fundo_game_over, (self.config.largura, self.config.altura))
+            except Exception as e:
+                print(f"ERRO ao carregar fundo_game_over.png: {e}")
 
     def carregar_inventario_sprites(self):
         diretorio_script = os.path.dirname(os.path.abspath(__file__))
@@ -201,6 +245,8 @@ class Interface:
         # Desenha fundo do menu
         if self.fundo_menu:
             try:
+                # Nota: A imagem já deve estar redimensionada se você fez isso no carregar_fundo_menu
+                # Se não, mantenha a linha abaixo.
                 img = pygame.transform.scale(self.fundo_menu, (self.config.largura, self.config.altura))
                 tela.blit(img, (0, 0))
             except Exception:
@@ -208,10 +254,10 @@ class Interface:
         else:
             tela.fill((20, 40, 20)) # Fundo verde escuro
 
-        # Botão Começar (sem renderizar texto do título — já presente no fundo)
-        largura_btn, altura_btn = 250, 60
+        # Botão Começar 
+        largura_btn, altura_btn = 295, 110
         x_btn = (self.config.largura // 2) - (largura_btn // 2)
-        y_btn = int(self.config.altura * 0.75)
+        y_btn = int(self.config.altura * 0.70)
         rect_botao = pygame.Rect(x_btn, y_btn, largura_btn, altura_btn)
 
         # Detecta clique e hover do mouse
@@ -225,7 +271,7 @@ class Interface:
                 return "JOGANDO"
 
         pygame.draw.rect(tela, cor_botao, rect_botao, border_radius=10)
-        pygame.draw.rect(tela, (255, 255, 255), rect_botao, 2, border_radius=10)  # Borda branca
+        pygame.draw.rect(tela,(0, 0, 0,), rect_botao, 2, border_radius=10)  # Borda preta
 
         texto_btn = self.fonte_botoes.render("COMEÇAR", True, (255, 255, 255))
         rect_texto_btn = texto_btn.get_rect(center=rect_botao.center)
@@ -255,7 +301,7 @@ class Interface:
             img = self.inventario_imgs.get('inventario_vazio.png')
 
         if img:
-            margem = 10
+            margem = 20
             largura = img.get_width()
             altura = img.get_height()
             x = self.config.largura - largura - margem
@@ -272,47 +318,65 @@ class Interface:
 
     def desenhar_fim_de_jogo(self, tela, venceu=False):
         """ Desenha a tela de Vitória ou Derrota e gerencia os cliques nos botões """
-        tela.fill((10, 10, 10)) # Fundo preto de fim de jogo
-
-        # Texto Principal (Vitória ou Derrota)
+        
+        # 1. Desenha a imagem de fundo correspondente
+        fundo_a_desenhar = None
         if venceu:
-            texto_principal = self.fonte_titulo.render("VOCÊ ABRIU O BAÚ E VENCEU!", True, (255, 215, 0))
+            fundo_a_desenhar = self.fundo_win
         else:
-            texto_principal = self.fonte_titulo.render("GAME OVER", True, (255, 0, 0))
-            
-        rect_principal = texto_principal.get_rect(center=(self.config.largura // 2, 200))
-        tela.blit(texto_principal, rect_principal)
+            fundo_a_desenhar = self.fundo_game_over
 
-        # Configurações dos botões "Jogar de Novo" e "Voltar ao Menu"
-        largura_btn, altura_btn = 280, 60
+        if fundo_a_desenhar:
+            try:
+                tela.blit(fundo_a_desenhar, (0, 0))
+            except Exception:
+                tela.fill((10, 10, 10)) 
+        else:
+            tela.fill((10, 10, 10)) 
+
+        # 2. Texto Principal (Apenas desenha se VENCEU, pois o GAME OVER já está na imagem)
+        if venceu:
+            texto_principal = self.fonte_titulo.render( True, (255, 215, 0))
+            rect_principal = texto_principal.get_rect(center=(self.config.largura // 2, 150))
+            tela.blit(texto_principal, rect_principal)
+
+        # 3. Configurações de clique do mouse
         pos_mouse = pygame.mouse.get_pos()
         clique_mouse = pygame.mouse.get_pressed()
 
-        # Botão 1: Jogar de Novo
-        rect_btn_novo = pygame.Rect((self.config.largura // 2) - (largura_btn // 2), 380, largura_btn, altura_btn)
-        cor_btn_novo = (40, 40, 40)
+        # --- BOTÃO 1: JOGAR DE NOVO 
+        largura_btn_novo, altura_btn_novo = 205, 150  # Maior para preencher bem o monitor central
+        x_btn_novo = (self.config.largura // 2) - (largura_btn_novo // 2)
+        y_btn_novo = 300  # Posição centralizada verticalmente no monitor do meio
+        rect_btn_novo = pygame.Rect(x_btn_novo, y_btn_novo, largura_btn_novo, altura_btn_novo)
+        
+        cor_btn_novo = (0,0,0)  # Cor escura para camuflar no monitor apagado
         if rect_btn_novo.collidepoint(pos_mouse):
-            cor_btn_novo = (70, 70, 70)
+            cor_btn_novo = (55, 55, 55)  # Realce no hover
             if clique_mouse[0] == 1:
                 return "REINICIAR"
 
-        # Botão 2: Voltar ao Menu
-        rect_btn_menu = pygame.Rect((self.config.largura // 2) - (largura_btn // 2), 470, largura_btn, altura_btn)
-        cor_btn_menu = (40, 40, 40)
+        # --- BOTÃO 2: VOLTAR AO MENU 
+        largura_btn_menu, altura_btn_menu = 300, 120  # Bem largo para abranger ambos os monitores inferiores
+        x_btn_menu = (self.config.largura // 2) - (largura_btn_menu // 2)
+        y_btn_menu = 500  # Alinhado na altura dos monitores de baixo
+        rect_btn_menu = pygame.Rect(x_btn_menu, y_btn_menu, largura_btn_menu, altura_btn_menu)
+        
+        cor_btn_menu = (0,0,0)  # Cor preta padrão
         if rect_btn_menu.collidepoint(pos_mouse):
-            cor_btn_menu = (70, 70, 70)
+            cor_btn_menu = (55, 55, 55)
             if clique_mouse[0] == 1:
                 return "VOLTAR_MENU"
 
-        # Desenhar Botão Jogar de Novo
-        pygame.draw.rect(tela, cor_btn_novo, rect_btn_novo, border_radius=10)
-        pygame.draw.rect(tela, (255, 255, 255), rect_btn_novo, 1, border_radius=10)
+        # 4. Desenhar Botão Jogar de Novo
+        pygame.draw.rect(tela, cor_btn_novo, rect_btn_novo, border_radius=6)
+        pygame.draw.rect(tela, (0,0,0), rect_btn_novo, 1, border_radius=6) # Borda sutil
         txt_novo = self.fonte_botoes.render("JOGAR DE NOVO", True, (255, 255, 255))
         tela.blit(txt_novo, txt_novo.get_rect(center=rect_btn_novo.center))
 
-        # Desenhar Botão Voltar ao Menu
-        pygame.draw.rect(tela, cor_btn_menu, rect_btn_menu, border_radius=10)
-        pygame.draw.rect(tela, (255, 255, 255), rect_btn_menu, 1, border_radius=10)
+        # 5. Desenhar Botão Voltar ao Menu
+        pygame.draw.rect(tela, cor_btn_menu, rect_btn_menu, border_radius=6)
+        pygame.draw.rect(tela, (0,0,0), rect_btn_menu, 1, border_radius=6)
         txt_menu = self.fonte_botoes.render("VOLTAR AO MENU", True, (255, 255, 255))
         tela.blit(txt_menu, txt_menu.get_rect(center=rect_btn_menu.center))
 
