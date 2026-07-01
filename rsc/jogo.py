@@ -358,6 +358,7 @@ class Jogo:
                     self.tela, venceu=self.venceu_fase, eventos=eventos)
                 if comando == "REINICIAR":
                     self.mapa_x, self.mapa_y = 0, 0 # Reseta coordenadas ao reiniciar
+                    self.mapa_central_desbloqueado = False
                     self.carregar_mapa_atual()
                     self.inicializar_elementos_jogo()
                     self.estado_atual = 'JOGANDO'
@@ -406,16 +407,11 @@ class Jogo:
                 if self.mapa:
                     self.mapa.desenhar(self.tela)
 
-<<<<<<< Updated upstream
                 # Desenha zonas vermelhas de perigo (abaixo dos personagens)
                 for inimigo in self.inimigos:
                     if hasattr(inimigo, 'desenhar_zonas_vermelhas'):
                         inimigo.desenhar_zonas_vermelhas(self.tela)
-=======
-                for inimigo in self.inimigos:
-                    if hasattr(inimigo, 'projeteis'):
-                        inimigo.projeteis.draw(self.tela)
->>>>>>> Stashed changes
+
 
                 # Y-SORT
                 sprites_para_desenhar = [self.jogador]
