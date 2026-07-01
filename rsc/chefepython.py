@@ -1,3 +1,4 @@
+import os
 import pygame
 import random
 from inimigos import Inimigo
@@ -44,9 +45,13 @@ class Projetil(pygame.sprite.Sprite):
     def __init__(self, x, y, jogador):
         super().__init__()
 
-        self.image = pygame.Surface((16, 16))
-        self.image.fill((255, 0, 0)) 
+        diretorio_rsc = os.path.dirname(os.path.abspath(__file__))
+        diretorio_raiz = os.path.dirname(diretorio_rsc)
+        caminho_imagem = os.path.join(diretorio_raiz, 'res', 'ataques', 'projetil.png')
         
+        imagem_original = pygame.image.load(caminho_imagem).convert_alpha()
+        self.image = pygame.transform.scale(imagem_original, (25, 25))
+
         self.rect = self.image.get_rect(center=(x, y))
         self.hitbox = self.rect.copy()
         
@@ -85,43 +90,78 @@ class AtaqueCruz(pygame.sprite.Sprite):
         self.orientacao = orientacao
         self.tempo_projetil = 90  # 1.5 segundos de duração total
 
+        diretorio_rsc = os.path.dirname(os.path.abspath(__file__))
+        diretorio_raiz = os.path.dirname(diretorio_rsc)
+        self.caminho_sprite = os.path.join(diretorio_raiz, 'res', 'ataques', 'ataque_cruz.png')
+
         # Descobre o tamanho da tela atual do jogo para expandir a linha até as bordas
         tela = pygame.display.get_surface()
-        largura_tela = tela.get_width()
-        altura_tela = tela.get_height()
+        self.largura_tela = tela.get_width()
+        self.altura_tela = tela.get_height()
 
         # --- FASE 1: AVISO (Linha fina amarela) ---
         if self.orientacao == 'H':
-            self.image = pygame.Surface((largura_tela, 4))
-            self.image.fill((255, 255, 0)) # Amarelo
-            self.rect = self.image.get_rect(center=(largura_tela // 2, y))
+            self.image = pygame.Surface((self.largura_tela, 20))
+            self.image.fill((255, 0, 0))
+            self.rect = self.image.get_rect(center=(self.largura_tela // 2, y))
         else:
-            self.image = pygame.Surface((4, altura_tela))
-            self.image.fill((255, 255, 0)) # Amarelo
-            self.rect = self.image.get_rect(center=(x, altura_tela // 2))
+            self.image = pygame.Surface((20, self.altura_tela))
+            self.image.fill((255, 0, 0))
+            self.rect = self.image.get_rect(center=(x, self.altura_tela // 2))
 
-        # Truque de mestre: Hitbox zerada para o jogador não tomar dano enquanto estiver amarelo
         self.hitbox = pygame.Rect(0, 0, 0, 0)
+
+    def _gerar_linha_repetida(self, espessura):
+        """Preenche a linha mantendo a proporção correta do sprite (sem esticar)"""
+        sprite_original = pygame.image.load(self.caminho_sprite).convert_alpha()
+        
+        if self.orientacao == 'H':
+            # Descobre quanto a imagem precisa encolher para caber na espessura (altura)
+            proporcao = espessura / sprite_original.get_height()
+            nova_largura = int(sprite_original.get_width() * proporcao)
+            
+            # Garante que a largura não vire zero caso a imagem seja bizarramente pequena
+            if nova_largura <= 0: nova_largura = espessura 
+
+            # Redimensiona mantendo o desenho perfeito
+            sprite_redimensionado = pygame.transform.scale(sprite_original, (nova_largura, espessura))
+            
+            superficie_final = pygame.Surface((self.largura_tela, espessura), pygame.SRCALPHA)
+            
+            for pos_x in range(0, self.largura_tela, nova_largura):
+                superficie_final.blit(sprite_redimensionado, (pos_x, 0))
+        else:
+            # Para a linha em pé, rotacionamos primeiro
+            sprite_rotacionado = pygame.transform.rotate(sprite_original, 90)
+            
+            # Descobre quanto encolher na largura para bater com a espessura da linha vertical
+            proporcao = espessura / sprite_rotacionado.get_width()
+            nova_altura = int(sprite_rotacionado.get_height() * proporcao)
+            
+            if nova_altura <= 0: nova_altura = espessura
+
+            # Redimensiona mantendo o desenho perfeito
+            sprite_redimensionado = pygame.transform.scale(sprite_rotacionado, (espessura, nova_altura))
+            
+            superficie_final = pygame.Surface((espessura, self.altura_tela), pygame.SRCALPHA)
+        
+            for pos_y in range(0, self.altura_tela, nova_altura):
+                superficie_final.blit(sprite_redimensionado, (0, pos_y))
+        
+        return superficie_final
 
     def update(self):
         self.tempo_projetil -= 1
 
         # --- FASE 2: EXPLOSÃO (Faltando 30 frames / 0.5 segundos para o ataque acabar) ---
         if self.tempo_projetil == 30:
-            tela = pygame.display.get_surface()
-            largura_tela = tela.get_width()
-            altura_tela = tela.get_height()
+            self.image = self._gerar_linha_repetida(espessura=50)
 
             if self.orientacao == 'H':
-                self.image = pygame.Surface((largura_tela, 24)) # Linha fica encorpada
-                self.image.fill((255, 0, 0)) # Fica vermelha
-                self.rect = self.image.get_rect(center=(largura_tela // 2, self.rect.centery))
+                self.rect = self.image.get_rect(center=(self.largura_tela // 2, self.rect.centery))
             else:
-                self.image = pygame.Surface((24, altura_tela)) # Linha fica encorpada
-                self.image.fill((255, 0, 0)) # Fica vermelha
-                self.rect = self.image.get_rect(center=(self.rect.centerx, altura_tela // 2))
+                self.rect = self.image.get_rect(center=(self.rect.centerx, self.altura_tela // 2))
 
-            # Ativa a hitbox de verdade: agora quem estiver em cima sofre dano e knockback
             self.hitbox = self.rect.copy()
 
         # Remove a linha do jogo assim que o tempo expirar

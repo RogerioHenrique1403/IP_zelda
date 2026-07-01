@@ -337,12 +337,6 @@ class Interface:
         else:
             tela.fill((10, 10, 10)) 
 
-        # 2. Texto Principal (Apenas desenha se VENCEU, pois o GAME OVER já está na imagem)
-        if venceu:
-            texto_principal = self.fonte_titulo.render("VOCÊ VENCEU!", True, (255, 215, 0))
-            rect_principal = texto_principal.get_rect(center=(self.config.largura // 2, 150))
-            tela.blit(texto_principal, rect_principal)
-
         # 3. Configurações de clique do mouse
         pos_mouse = pygame.mouse.get_pos()
         clique_mouse = False

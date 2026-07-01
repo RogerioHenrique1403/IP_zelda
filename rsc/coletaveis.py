@@ -84,9 +84,13 @@ class Npc(pygame.sprite.Sprite):
 class Coracao(pygame.sprite.Sprite):
     def __init__(self, x, y):
         super().__init__()
-        # Cria um quadrado de 16x16 pixels
-        self.image = pygame.Surface((16, 16))
-        self.image.fill((255, 20, 147)) # Cor Rosa Choque (Deep Pink)
+
+        diretorio_rsc = os.path.dirname(os.path.abspath(__file__))
+        diretorio_raiz = os.path.dirname(diretorio_rsc)
+        caminho_imagem = os.path.join(diretorio_raiz, 'res', 'Coletaveis', 'heart.png')
+        
+        imagem_original = pygame.image.load(caminho_imagem).convert_alpha()
+        self.image = pygame.transform.scale(imagem_original, (40, 40))
         
         self.rect = self.image.get_rect(center=(x, y))
         self.hitbox = self.rect.copy()

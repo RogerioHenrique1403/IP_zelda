@@ -406,16 +406,13 @@ class Jogo:
                 if self.mapa:
                     self.mapa.desenhar(self.tela)
 
-<<<<<<< Updated upstream
                 # Desenha zonas vermelhas de perigo (abaixo dos personagens)
                 for inimigo in self.inimigos:
                     if hasattr(inimigo, 'desenhar_zonas_vermelhas'):
                         inimigo.desenhar_zonas_vermelhas(self.tela)
-=======
                 for inimigo in self.inimigos:
                     if hasattr(inimigo, 'projeteis'):
                         inimigo.projeteis.draw(self.tela)
->>>>>>> Stashed changes
 
                 # Y-SORT
                 sprites_para_desenhar = [self.jogador]
