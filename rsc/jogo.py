@@ -7,7 +7,8 @@ from inimigos import Inimigo
 from mapa import Mapa
 from coletaveis import Npc
 from coletaveis import Coletavel
-
+from chefepython import PythonBoss
+from coletaveis import Coracao
 
 class Jogo: 
     def __init__(self, tela, interface):
@@ -61,6 +62,9 @@ class Jogo:
         self.chefao_derrotado = False
         self.vitoria_processada = False
 
+        self.coracao = pygame.sprite.Group()
+        self.timer_coracao = 300
+
     def carregar_mapa_atual(self):
         """ Carrega o arquivo TMX baseado nas coordenadas atuais do mundo """
         caminho_tmx = self.obter_caminho_mapa_atual()
@@ -98,14 +102,7 @@ class Jogo:
             )
         elif posicao == (0, -1) and self.mapa_central_desbloqueado:
             # Spawn the python in the top map
-            self.inimigos.append(
-                Inimigo(
-                    400,  # x position, adjust as needed
-                    300,  # y position, adjust as needed
-                    self.interface,
-                    tipo='python'
-                )
-            )
+            self.inimigos.append(PythonBoss(400, 300, self.interface))
 
     def inicializar_elementos_jogo(self):
         self.jogador = Jogador(self.pos_jogador_x, self.pos_jogador_y, self.interface)
@@ -243,6 +240,17 @@ class Jogo:
         if self.mapa_x == 1 and self.mapa_y == 0:
             area_coletavel = self.coletavel.hitbox
             return self.jogador.hitbox.colliderect(area_coletavel)
+
+        if self.mapa_x == 0 and self.mapa_y == -1:
+            for item in self.coracao:
+                if self.jogador.hitbox.colliderect(item.hitbox):
+                    self.jogador.vida += 20
+                    if self.jogador.vida > 100: # Limita a vida máxima
+                        self.jogador.vida = 100
+                    
+                    item.kill()
+                    return True
+
         return False
 
     def atualizar_combate(self):
@@ -266,6 +274,12 @@ class Jogo:
                 continue
 
             inimigo.update(self.jogador)
+
+            if hasattr(inimigo, 'projeteis'):
+                for projetil in inimigo.projeteis:
+                    if projetil.hitbox.colliderect(self.jogador.hitbox):
+                        self.jogador.receber_dano(10, projetil.hitbox.centerx, projetil.hitbox.centery)
+                        projetil.kill()
 
             if self.jogador.atacando:
                 area_ataque = self.jogador.criar_hitbox_ataque()
@@ -292,6 +306,29 @@ class Jogo:
         if cor in self.inventario:
             return
         self.inventario.add(cor)
+
+    def spawn_coracao(self):
+        if self.mapa_x == 0 and self.mapa_y == -1:
+            
+            if self.timer_coracao > 0:
+                self.timer_coracao -= 1
+            else:
+                largura_tela = self.tela.get_width()
+                altura_tela = self.tela.get_height()
+                
+                # Escolhe a posição aleatória dentro da arena
+                pos_x = random.randint(50, largura_tela - 50)
+                pos_y = random.randint(50, altura_tela - 50)
+                
+                # Cria e adiciona ao grupo
+                novo_coracao = Coracao(pos_x, pos_y)
+                self.coracao.add(novo_coracao)
+                
+                # Reseta o tempo para o próximo nascer (ex: 7 segundos = 420 frames)
+                self.timer_coracao = 420
+                
+        else:
+            self.coracao.empty()
 
     def run(self):
         rodando = True
@@ -341,6 +378,9 @@ class Jogo:
                         self.atualizar_combate()
                         # TRATAR TRANSIÇÃO DE TELA
                         self.tratar_transicao_de_tela()
+                        self.spawn_coracao()
+                        self.coracao.update()
+                        self.interacao_coletavel()
 
                 if self.jogador.estado != 'morrendo':
                     # COLISÃO COM NPC (Só se o NPC estiver no mapa (0,0))
@@ -359,16 +399,23 @@ class Jogo:
                             self.coletaveis_coletados[posicao_atual] = "coletado"
                             # Atualiza inventário conforme o mapa em que o item foi coletado
                             self.adicionar_item_inventario(posicao_atual)
+                    
 
                 # DESENHO
                 self.tela.fill(self.COR_GRAMA)
                 if self.mapa:
                     self.mapa.desenhar(self.tela)
 
+<<<<<<< Updated upstream
                 # Desenha zonas vermelhas de perigo (abaixo dos personagens)
                 for inimigo in self.inimigos:
                     if hasattr(inimigo, 'desenhar_zonas_vermelhas'):
                         inimigo.desenhar_zonas_vermelhas(self.tela)
+=======
+                for inimigo in self.inimigos:
+                    if hasattr(inimigo, 'projeteis'):
+                        inimigo.projeteis.draw(self.tela)
+>>>>>>> Stashed changes
 
                 # Y-SORT
                 sprites_para_desenhar = [self.jogador]
@@ -380,6 +427,9 @@ class Jogo:
                     sprites_para_desenhar.append(self.coletavel)
 
                 sprites_para_desenhar.extend(self.inimigos)
+                
+                if self.mapa_x == 0 and self.mapa_y == -1:
+                    sprites_para_desenhar.extend(self.coracao.sprites())
                 
                 sprites_para_desenhar.sort(key=lambda sprite: sprite.hitbox.centery)
 
