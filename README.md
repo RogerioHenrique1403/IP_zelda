@@ -13,8 +13,9 @@ Empunhe sua espada, rebata os SyntaxErrors e lute para dar orgulho ao seu mentor
 
 ## 👥 Membros da Equipe
 * **Rafaela Lins**: [Seu GitHub e/ou LinkedIn]
-* **[Nome do Colega 1]**: [GitHub e/ou LinkedIn]
-* **[Nome do Colega 2]**: [GitHub e/ou LinkedIn]
+* **Rogério Henrique**: [GitHub e/ou LinkedIn]
+* **Lucas Mateus**: [GitHub e/ou LinkedIn]
+* **Lucas Ryan**: [GitHub e/ou LinkedIn]
 
 ---
 
